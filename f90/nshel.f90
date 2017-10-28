@@ -264,6 +264,7 @@ contains
     double precision :: d(3,0:5,0:5,0:10), acc, coef
 
     write(*,*) "wa!"
+    mat = 0
     do js = 1, this%num
        do ks = 1, this%num    
           wj(:) = this%shels(js)%w(:)
@@ -293,7 +294,8 @@ contains
                       coef = cp * this%shels(js)%coef(jj,jg) &
                            * this%shels(ks)%coef(kk,kg)
                       j = this%j0s(js) + jj
-                      k = this%j0s(js) + kk
+                      k = this%j0s(ks) + kk
+                      write(*,*) j,k,acc,coef
                       mat(j,k) = mat(j,k) + coef*acc
                    end do
                 end do

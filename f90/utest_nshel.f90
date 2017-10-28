@@ -1,8 +1,8 @@
 #include "macros.fpp"
 
 module Mod_TestNshel
-  use Mod_err_handle
-  use Mod_utest_check
+  use Mod_ErrHandle
+  use Mod_UtestCheck
   use Mod_Nshel
   implicit none
 contains
@@ -11,7 +11,6 @@ contains
     call test_smat()
   end subroutine TestNshel_run
   subroutine test_coef()
-
     write(*,*)
     write(*,*) "--------------------"
     write(*,*) "TestNshel_coef begin"
@@ -27,7 +26,7 @@ contains
     ![[ 0.51   -0.1     0.25    0.      0.      0.    ]
     ![-0.202   0.775  -0.1     0.125   0.      0.    ]
     ![ 0.8154 -0.456   0.7825 -0.075   0.0625  0.    ]]]
-
+    
     call expect_eq(1.0d0,  coef_d1(1.0d0,1.1d0,1.2d0,1.3d0, 0,0,0))
     call expect_eq(-0.2d0, coef_d1(1.0d0,1.1d0,1.2d0,1.3d0, 0,1,0))
     call expect_eq(0.54d0, coef_d1(1.0d0,1.1d0,1.2d0,1.3d0, 0,2,0))
@@ -75,9 +74,9 @@ contains
 end module Mod_TestNshel
 
 program main
-  use Mod_err_handle
-  use Mod_utest
-  use Mod_utest_check
+  use Mod_ErrHandle
+  use Mod_Utest
+  use Mod_UtestCheck
   use Mod_TestNshel
 
   call utest_begin
