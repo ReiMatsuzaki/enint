@@ -1,4 +1,4 @@
-#include "macros_err.fpp"
+#include "macros.fpp"
 #include "macros_utest.fpp"
 
 module Mod_TestNshel
@@ -13,7 +13,6 @@ contains
     call test_h2()
   end subroutine TestNshel_run
   subroutine test_coef()
-    write(*,*)
     write(*,*) "--------------------"
     write(*,*) "TestNshel_coef begin"
     
@@ -35,7 +34,6 @@ contains
 
     write(*,*) "TestNshel_coef end"
     write(*,*) "--------------------"
-    write(*,*) 
     
   end subroutine test_coef
   subroutine test_smat()
@@ -44,10 +42,8 @@ contains
     double precision :: coef_l(0:3,20)
     double precision, allocatable :: mat(:,:)
 
-    write(*,*)
     write(*,*) "--------------------"
-    write(*,*) "TestNshel_run begin"
-    write(*,*) 
+    write(*,*) "TestNshel_smat begin"
 
     call Nshel_new(nshel, 2, 3); check_err()
     nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
@@ -66,33 +62,49 @@ contains
     
     call Nshel_delete(nshel); check_err()
 
-    write(*,*)    
-    write(*,*) "TestNshel_run end"
+    write(*,*) "TestNshel_smat end"
     write(*,*) "--------------------"
-    write(*,*)     
 
-    
   end subroutine test_smat
   subroutine test_h2()
-
+    use Mod_math
     integer :: ifile = 12323
-    double precision, allocatable :: smat
+    double precision, allocatable :: calc(:,:), ref(:,:)
+    type(Obj_Nshel) nshel
+    integer :: num
 
-    write(*,*)
     write(*,*) "--------------------"
     write(*,*) "TestNshel_h2 begin"
-    write(*,*)
-    
-    call open_r(ifile, "../gms/h2/out/s.csv"); check_err()
-    call load_dmat(ifile, smat); check_err()
 
-    deallocate(smat)
+    ! -- new --
+    call Nshel_new_file(nshel, "../gms/h2/out/nshel.json"); check_err()
+    call Nshel_setup(nshel); check_err()
+    call Nshel_dump(nshel); check_err()
+    num = nshel%nbasis
+    allocate(ref(num,num), calc(num,num))
+
+    ! -- s matrix --
+    call Nshel_s(nshel, calc); check_err()
+    call open_r(ifile, "../gms/h2/out/s.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
     close(ifile)
 
-    write(*,*)
+    ! -- t matrix --
+    call Nshel_t(nshel, calc); check_err()
+    call open_r(ifile, "../gms/h2/out/t.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()
+
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
+    close(ifile)
+    
+    ! -- delete --
+    call Nshel_delete(nshel); check_err()
+    deallocate(calc, ref)
+    close(ifile)
+
     write(*,*) "TestNshel_h2 end"
     write(*,*) "--------------------"    
-    write(*,*)    
     
   end subroutine test_h2
 end module Mod_TestNshel
@@ -103,12 +115,12 @@ program main
   use Mod_UtestCheck
   use Mod_TestNshel
 
-  call utest_begin
-  call err_handle_begin
+  call utest_new
+  call ErrHandle_new
 
   call TestNshel_run
 
-  call err_handle_end
-  call utest_end
+  call ErrHandle_delete
+  call utest_delete
   
 end program main

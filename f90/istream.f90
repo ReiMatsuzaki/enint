@@ -1,7 +1,7 @@
 #include "macros.fpp"
 
 module mod_istream
-  use mod_err_handle
+  use Mod_Errhandle
   implicit none
   integer, parameter :: MAX_LINE=1000
   integer, parameter :: MAX_MARKED=100
@@ -230,8 +230,8 @@ contains
     
     if(this % index < 1) then
        begin_err(1)
-       write(*,*) "index must be positive."
-       call err_si("index: ", this % index)
+       write(0,*) "index must be positive."
+       write(0,*) "index: ", this % index
        end_err()
     else if(this % index == 1 ) then
        if(this % previous_line .eq. "") then
@@ -257,9 +257,9 @@ contains
     character(*)         :: str
     if(len(str) > MAX_LINE) then
        begin_err(1)
-       call err_1("input string is too long")
-       call err_si("MAX_LINE: ", MAX_LINE)
-       call err_si("len(str): ", len(str))
+       write(0,*) "input string is too long"
+       write(0,*) "MAX_LINE: ", MAX_LINE
+       write(0,*) "len(str): ", len(str)
        end_err()
     end if
     this % index = 1
@@ -321,8 +321,8 @@ contains
     
     if(this % index < 1) then
        begin_err(1)
-       call err_1("index must be positive.")
-       call err_si("index: ", this % index)
+       write(0,*) "index must be positive."
+       write(0,*) "index: ", this % index
        end_err()
     else if(this % index == 1 ) then
        throw_err("previous line is not stored. this routine fail.",1)

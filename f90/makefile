@@ -23,7 +23,7 @@ clean:
 
 # ==== utest(nshel) ====
 TARGET=utest_nshel
-MODULES=err_handle const utest nshel ${TARGET}
+MODULES=err_handle const math istream fjson utest nshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/${TARGET}: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas

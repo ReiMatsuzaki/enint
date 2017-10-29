@@ -30,8 +30,8 @@ contains
     return
     
 999 continue
-    call err_with_file_line("failed to open file", 1, __FILE__, __LINE__)
-    call err_ss("filename: ", filename)
+    call ErrHandle_err("failed to open file", 1, __FILE__, __LINE__)
+    write(0,*) "filename: ", filename
     return
   end subroutine open_w
   subroutine open_r(ifile, filename)
@@ -42,8 +42,8 @@ contains
     return
     
 999 continue
-    call err_with_file_line("failed to open file", 1, __FILE__, __LINE__)
-    call err_ss("filename: ", filename)
+    call ErrHandle_err("failed to open file", 1, __FILE__, __LINE__)
+    write(0,*) "filename: ", filename
     return
     
   end subroutine open_r

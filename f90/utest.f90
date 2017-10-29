@@ -1,4 +1,4 @@
-#include "macros_err.fpp"
+#include "macros.fpp"
 
 !     Unit test utilities
 
@@ -88,6 +88,39 @@ module Mod_UtestCheck
        logical stopq
      end subroutine check_eq_s_0
   end interface utest_check_eq_0
+contains
+  subroutine expect_near_dmat(a, b, eps)
+    use Mod_Utest
+    use Mod_ErrHandle
+    double precision, intent(in) :: a(:,:), b(:,:)
+    double precision, intent(in) :: eps
+    integer i, j
+
+    write(*,*) size(a,1), size(b,1), size(a,2), size(b,2)
+    
+    call utest_check_begin
+    if(size(a,1).ne.size(b,1) .or. size(a,2).ne.size(b,2)) then
+       begin_err(1)
+       write(0,*) "Size mismatch"
+       write(0,*) "size(a) = ", size(a,1), size(a,2)
+       write(0,*) "size(b) = ", size(b,1), size(b,2)
+       end_err()
+    end if
+
+    do i = 1, size(a,1)
+       do j = 1, size(b,1)
+          if(abs(a(i,j)-b(i,j))>eps) then
+             begin_err(1)
+             write(0,*) "matrix elements are not near"
+             write(0,*) "(i, j) : ", i, j
+             write(0,*) "a(i,j) : ", a(i,j)
+             write(0,*) "b(i,j) : ", b(i,j)
+             end_err()             
+          end if
+       end do
+    end do
+    
+  end subroutine expect_near_dmat
 end module Mod_UtestCheck
 module mod_Utest
   implicit none
@@ -97,7 +130,7 @@ module mod_Utest
 !  public:: utest_check_eq, utest_check_near  
 contains 
   ! ==== constructors ====
-  subroutine utest_begin
+  subroutine utest_new
 
     num_utest = 0
     num_failed = 0
@@ -107,8 +140,8 @@ contains
     write(*,*) "=========================="
     write(*,*) 
     
-  end subroutine utest_begin
-  subroutine utest_end
+  end subroutine utest_new
+  subroutine utest_delete
     write(*,*) "--------------------------"
     write(*,*) "          Results         "
     write(*,*) "--------------------------"
@@ -118,7 +151,7 @@ contains
        write(*,*) num_failed, num_utest
     end if
 
-  end subroutine utest_end
+  end subroutine utest_delete
 
   ! ==== utils ====
   subroutine utest_check_begin
@@ -387,40 +420,3 @@ subroutine check_near_d(a,b,eps,a_str,b_str,file,line,stopq)
     call utest_check_false(a, "a", file, line, stopq)
   end subroutine utest_check_false_0
 
-  ! ==== using err_handle version ====
-  subroutine expect_near_cmat(a, b, eps)
-    use mod_utest
-    use mod_err_handle
-    implicit none
-    
-    complex(kind(0d0)), intent(in) :: a(:,:), b(:,:)
-    double precision , intent(in) :: eps
-    integer n, m, i, j
-
-    call utest_check_begin
-    
-    if(size(a, 1) .ne. size(b, 1) .or. size(a, 2) .ne. size(b, 2)) then
-       begin_err(1)
-       call err_1("size mismatch")
-       write(*,*) "left = ", size(a, 1), size(a, 2)
-       write(*,*) "right = ", size(b, 1), size(b, 2)
-       end_err()       
-    end if
-    
-    n = size(a, 1)
-    m = size(a, 2)
-    
-    do i = 1, n
-       do j = 1, m
-          if(abs(a(i,j)-b(i,j)) > eps) then
-             begin_err(1)
-             write(*,*) "elemnts are different"
-             write(*,*) "i, j = ", i, j
-             write(*,*) "left(i,j) = ", a(i,j)
-             write(*,*) "right(i,j) = ", b(i,j)
-             end_err()
-          end if
-       end do
-    end do
-    
-  end subroutine expect_near_cmat

@@ -20,8 +20,8 @@
 !    or linked list of (string, value)
 
 module mod_fjson_parser
-  use mod_err_handle
-  use mod_istream
+  use Mod_ErrHandle
+  use Mod_Istream
   implicit none
 
   type token
@@ -144,8 +144,8 @@ contains
        else if(trim(c)=="") then
        else
           begin_err(1)
-          call err_1("invalid character")
-          call err_ss("character: ", c)
+          write(0,*) "invalid character"
+          write(0,*) "character: ", c
           end_err()
        end if
     
@@ -169,10 +169,10 @@ contains
        if((prev.ne.TOKEN_BEGIN_ARY) .and. (prev.ne.TOKEN_SEP) .and. &
             (prev.ne.TOKEN_COMMA)) then
           begin_err(1)
-          call err_1("invalid location for {")
-          call err_ss("prev_val:  ", tokens(ie-1)%val)
-          call err_si("prev_type: ", tokens(ie-1)%type)
-          call err_si("ie: ", ie)
+          write(0,*) "invalid location for {"
+          write(0,*) "prev_val:  ", tokens(ie-1)%val
+          write(0,*) "prev_type: ", tokens(ie-1)%type
+          write(0,*) "ie: ", ie
           end_err()
        end if
     end if
@@ -314,8 +314,8 @@ contains
        current_res = .false.
     else
        begin_err(1)
-       call err_1("invalid first character for bool")
-       call err_ss("c: ", c)
+       write(0,*) "invalid first character for bool"
+       write(0,*) "c: ", c
        end_err()
     end if
     
@@ -330,8 +330,8 @@ contains
        current_res = .false.
     else
        begin_err(1)
-       call err_1("invalid key for boolean")
-       call err_ss("line: ", line)
+       write(0,*)"invalid key for boolean"
+       write(0,*) "line: ", line
        return
     end if
 
@@ -424,7 +424,7 @@ contains
 end module mod_fjson_parser
 
 module mod_fjson_value
-  use mod_err_handle
+  use Mod_ErrHandle
   implicit none
   character(10), private :: json_type_name(7) = (/"N", "I", "D", "B", "S", "A", "O"/)
   integer, parameter :: TYPE_VALUE_NULL=1
@@ -557,8 +557,8 @@ contains
     integer :: i
     if(v % type .ne. TYPE_I) then
        begin_err(1)
-       call err_1("value is not integer")
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*) "value is not integer"
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        return
     end if
     i = v % val_i
@@ -568,8 +568,8 @@ contains
     double precision :: d
     if(v % type .ne. TYPE_D) then
        begin_err(1)
-       call err_1("value is not double")
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*)"value is not double"
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        call value_dump(v, 6)
        return
     end if
@@ -580,8 +580,8 @@ contains
     logical :: x
     if(v % type .ne. TYPE_B) then
        begin_err(1)
-       call err_1("value is not double")
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*) "value is not double"
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        return
     end if
     x = v % val_b
@@ -591,8 +591,8 @@ contains
     character(*) :: x
     if(v % type .ne. TYPE_S) then
        begin_err(1)
-       call err_1("value is not string")
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*) "value is not string"
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        return
     end if
     x = trim(v % val_s)
@@ -602,8 +602,8 @@ contains
     type(array) :: x
     if(v % type .ne. TYPE_a) then
        begin_err(1)
-       call err_1("value is not array")
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*) "value is not array"
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        return
     end if
     call array_clone(x, v%val_a); check_err()
@@ -613,9 +613,9 @@ contains
     type(object) :: o
     if(v % type .ne. TYPE_o) then
        begin_err(1)
-       call err_1("value is not object")
-       call err_si("inputed type id is ", v % type)
-       call err_ss("inputed type is: ", json_type_name(v % type))
+       write(0,*) "value is not object"
+       write(0,*) "inputed type id is ", v % type
+       write(0,*) "inputed type is: ", json_type_name(v % type)
        end_err()
     end if
     call object_clone(o, v%val_o); check_err()
@@ -736,6 +736,25 @@ contains
     this % size = 0
   end subroutine object_delete
   ! -- Accessor --
+  subroutine object_get_idx(o, k, idx)
+    type(object), intent(in) :: o
+    character(*), intent(in) :: k
+    integer, intent(out) :: idx
+    integer i
+    idx = -1
+    do i = 1, o%size
+       if(o%keys(i).eq.k) then
+          idx = i
+          return
+       end if
+    end do
+    
+    begin_err(1)
+    write(0,*) "failed to find key"
+    write(0,*) "key:", k
+    end_err()
+    
+  end subroutine object_get_idx
   subroutine object_set(o, k, v)
     type(object) o
     character(*) k
@@ -744,8 +763,8 @@ contains
 
     if(o%size < 0) then
        begin_err(1)
-       call err_1("wrong state for object o")
-       call err_si("size: ", o%size)
+       write(0,*) "wrong state for object o"
+       write(0,*) "size: ", o%size
        end_err()
     end if
     
@@ -772,8 +791,8 @@ contains
        end if
     end do
     begin_err(1)
-    call err_1("failed to find key")
-    call err_ss("key: ", k)
+    write(0,*)"failed to find key"
+    write(0,*) "key: ", k
     end_err()
   end subroutine object_get
   function object_exist(o, k) result(res)
@@ -857,8 +876,8 @@ contains
     call value_get_i(v, x); check_err()
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        end_err()
     end if
     call value_delete(v); check_err()
@@ -874,8 +893,8 @@ contains
     call value_get_d(v, x)
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        return
     end if
     call value_delete(v); check_err()
@@ -891,8 +910,8 @@ contains
     call value_get_b(v, x); check_err()
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        end_err()
     end if
     call value_delete(v); check_err()
@@ -908,8 +927,8 @@ contains
     call value_get_s(v, x); check_err()
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        end_err()
     end if
     call value_delete(v); check_err()
@@ -924,8 +943,8 @@ contains
     call value_get_a(v, x); check_err()
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        end_err()
     end if
     call value_delete(v); check_err()
@@ -941,8 +960,8 @@ contains
     call value_get_o(v, x); check_err()
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on conversion")
-       call err_ss("key: ", k)
+       write(0,*)"error on conversion"
+       write(0,*) "key: ", k
        end_err()
     end if
     call value_delete(v); check_err()
@@ -1050,9 +1069,9 @@ contains
 
     if(i < 1 .or. this % size < i) then
        begin_err(1)
-       call err_1("index out of range")
-       call err_si("i: ", i)
-       call err_si("size: ", this % size)
+       write(0,*)"index out of range"
+       write(0,*) "i: ", i
+       write(0,*) "size: ", this % size
        return
     end if
     call value_clone(this%vals(i), v); check_err()
@@ -1064,9 +1083,9 @@ contains
 
     if(i < 1 .or. this % size < i) then
        begin_err(1)
-       call err_1("index out of range")
-       call err_si("i: ", i)
-       call err_si("size: ", this % size)
+       write(0,*)"index out of range"
+       write(0,*) "i: ", i
+       write(0,*) "size: ", this % size
        return
     end if
     !v = this % vals(i)
@@ -1202,15 +1221,15 @@ contains
     call array_get(this, i, v)
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on getting element of array")
-       call err_si("i: ", i)
+       write(0,*)"error on getting element of array"
+       write(0,*) "i: ", i
        end_err()
     end if
     call value_get_d(v, x)
     if(ierr .ne. 0) then
        begin_err(1)
-       call err_1("error on extracting double")
-       call err_si("i:", i)
+       write(0,*)"error on extracting double"
+       write(0,*) "i:", i
        end_err()
     end if
     
@@ -1252,9 +1271,9 @@ contains
 
     if(size(xs) < this % size) then
        begin_err(1)
-       call err_1("xs is too small")
-       call err_si("this % size: ", this % size)
-       call err_si("size(xs):    ", size(xs))
+       write(0,*)"xs is too small"
+       write(0,*) "this % size: ", this % size
+       write(0,*) "size(xs):    ", size(xs)
        return 
     end if
 
@@ -1274,9 +1293,9 @@ contains
 
     if(size(xs) < this % size) then
        begin_err(1)
-       call err_1("xs is too small")
-       call err_si("this % size: ", this % size)
-       call err_si("size(xs):    ", size(xs))
+       write(0,*)"xs is too small"
+       write(0,*) "this % size: ", this % size
+       write(0,*) "size(xs):    ", size(xs)
        end_err()
     end if
 
@@ -1296,9 +1315,9 @@ contains
 
     if(size(xs) < this % size) then
        begin_err(1)
-       call err_1("xs is too small")
-       call err_si("this % size: ", this % size)
-       call err_si("size(xs):    ", size(xs))
+       write(0,*) "xs is too small"
+       write(0,*) "this % size: ", this % size
+       write(0,*) "size(xs):    ", size(xs)
        end_err()
     end if
 
@@ -1360,7 +1379,7 @@ module mod_fjson_loader
   ! example for json_load_obj
   ! in_ie, in_ie+1, in_ie+2, in_ie+3, in_ie+4, in_ie+5=out_ie
   !   {  ,  "xkey",   :    ,    5   ,      } ,  ????
-  use mod_err_handle
+  use Mod_ErrHandle
   use mod_fjson_parser
   use mod_fjson_value
   implicit none
@@ -1368,7 +1387,7 @@ contains
   subroutine loader_error(ie)
     integer ie, iie
     character(100) line
-    call err_si("ie: ", ie)
+    write(0,*) "ie: ", ie
 
     do iie = max(1, ie-5), ie+5
        if(tokens(ie-1)%type .ne. TOKEN_NULL) then
@@ -1376,7 +1395,7 @@ contains
        else
           write(line, '("eles[", I0, "]: null")') iie
        end if
-       call err_1(line)
+       write(0,*) line
     end do
     
   end subroutine loader_error
@@ -1449,7 +1468,7 @@ contains
        call load_ary(ie, ie_out_tmp, v); check_err()       
     case default
        begin_err(1)
-       call err_1("unsupported vlaue type")
+       write(0,*)"unsupported vlaue type"
        call loader_error(ie)
        end_err()
     end select
@@ -1484,7 +1503,7 @@ contains
 
     if(tokens(ie) % type .ne. TOKEN_NUM) then
        begin_err(1)
-       call err_1("type mismatch.")
+       write(0,*)"type mismatch."
        call loader_error(ie)
        end_err()
     end if
@@ -1524,7 +1543,7 @@ contains
     ie = in_ie
     if(tokens(ie) % type .ne. TOKEN_STR) then
        begin_err(1)
-       call err_1("type must be str")       
+       write(0,*)"type must be str"
        call loader_error(ie)
        end_err()
     end if
@@ -1552,7 +1571,7 @@ contains
     ie = in_ie
     if(tokens(ie) % type .ne. TOKEN_BOOL) then
        begin_err(1)
-       call err_1("type must be bool")
+       write(0,*)"type must be bool"
        call loader_error(ie)
        end_err()
     end if
@@ -1563,8 +1582,8 @@ contains
        call value_new_b(v, .false.)
     else
        begin_err(1)
-       call err_1("invalid value")
-       call err_ss("val: ", tokens(ie) % val)
+       write(0,*)"invalid value"
+       write(0,*) "val: ", tokens(ie) % val
        end_err()
     end if
     
@@ -1626,7 +1645,7 @@ contains
           exit
        else
           begin_err(1)
-          call err_1("failed to find comma or }")
+          write(0,*)"failed to find comma or }"
           call loader_error(ie)
           end_err()
        end if
@@ -1680,7 +1699,7 @@ contains
           exit
        else
           begin_err(1)
-          call err_1("failed to find comma or ]")
+          write(0,*)"failed to find comma or ]"
           call loader_error(ie)
           end_err()
        end if
@@ -1708,8 +1727,8 @@ contains
     ie = in_ie
     if(tokens(in_ie) % type .ne. ele_type) then
        begin_err(1)
-       call err_1("type mismatch")
-       call err_ss("desired type: ", type_names(ele_type))
+       write(0,*)"type mismatch"
+       write(0,*) "desired type: ", type_names(ele_type)
        call loader_error(ie)
        return
     end if
@@ -1761,7 +1780,7 @@ contains
        c = re
     else
        begin_err(1)
-       call err_1("invalid type")
+       write(0,*)"invalid type"
        if(show_message_q) then
           write(*, '(a)', advance='no') "v = "
           call value_dump(v, 6)
@@ -1836,6 +1855,26 @@ contains
        call array_delete(ai); check_err()
     end do
   end subroutine dmat2a
+  subroutine a2ivec(a, xs)
+    type(array) :: a
+    integer, intent(out) :: xs(:)
+    integer i, num
+
+    call array_get_size(a, num)
+
+    if(size(xs) < num) then
+       begin_err(1)
+       write(0,*) "size mismatch"
+       write(0,*) "size(a):", num
+       write(0,*) "size(xs):", size(xs)
+       end_err()
+    end if
+
+    do i = 1, num
+       xs(i) = a%vals(i)%val_i
+    end do
+    
+  end subroutine a2ivec
   subroutine a2dvec(a, xs)
     type(array) :: a
     double precision :: xs(:)

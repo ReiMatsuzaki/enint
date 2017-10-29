@@ -1,7 +1,7 @@
 #include "macros.fpp"
 
 module Mod_Shel
-  use Mod_err_handle
+  use Mod_ErrHandle
   implicit none
   type Obj_Shel
      double precision, allocatable :: zeta(:)
@@ -63,7 +63,7 @@ contains
 end module Mod_Shel
 
 module Mod_Nucs
-  use Mod_err_handle
+  use Mod_ErrHandle
   implicit none
   type Obj_Nucs
      integer :: num
@@ -101,7 +101,7 @@ contains
 end module Mod_Nucs
 
 Module Mod_Nshel
-  use Mod_err_handle
+  use Mod_ErrHandle
   use Mod_Shel
   use Mod_Nucs  
   implicit none
@@ -124,6 +124,99 @@ contains
     this%j0s(:) = -1
     
   end subroutine Nshel_new
+  subroutine Nshel_new_json(this, o)
+    use Mod_fjson
+    use Mod_Math
+    type(Obj_Nshel) :: this
+    type(object) :: o    
+    double precision, allocatable :: w(:,:), zs(:), coef_l(:,:)
+    integer ng, num, natom, idx, ia, js, k0, k1
+    integer, allocatable :: katom(:), kmin(:), kmax(:), kstart(:), kng(:)    
+    character(5) :: ntypes(10)
+
+    call object_get_i(o, "ng", ng); check_err()
+    call object_get_i(o, "nshell", num); check_err()
+
+    call object_get_idx(o, "katom", idx); check_err()
+    call array_get_size(o%vals(idx)%val_a, natom); check_err()
+    allocate(katom(natom))
+    call a2ivec(o%vals(idx)%val_a, katom); check_err()    
+
+    ! -- allocate --
+    call Nshel_new(this, natom, num); check_err()
+
+    ! -- basic --
+    allocate(kmin(num), kmax(num), kstart(num), kng(num))
+    call object_get_idx(o, "kmin", idx); check_err()
+    call a2ivec(o%vals(idx)%val_a, kmin(:)); check_err()
+    call object_get_idx(o, "kmax", idx); check_err()
+    call a2ivec(o%vals(idx)%val_a, kmax(:)); check_err()
+    call object_get_idx(o, "kstart", idx); check_err()
+    call a2ivec(o%vals(idx)%val_a, kstart(:)); check_err()
+    call object_get_idx(o, "kng", idx); check_err()
+    call a2ivec(o%vals(idx)%val_a, kng(:)); check_err()            
+    
+    ! -- nucs --
+    call object_get_idx(o, "c", idx); check_err()
+    allocate(w(3,natom))
+    call a2dmat(o%vals(idx)%val_a, w(:,:)); check_err()
+    this%nucs%ws(:,:) = transpose(w(:,:))
+
+    call object_get_idx(o, "zan", idx); check_err()
+    do ia = 1, natom
+       this%nucs%zs(ia) = o%vals(idx)%val_a%vals(ia)%val_d
+    end do
+
+    
+    ! -- GTO --
+    allocate(zs(ng), coef_l(0:2,ng))
+    
+    call object_get_idx(o, "ex", idx); check_err()
+    call a2dvec(o%vals(idx)%val_a, zs(:)); check_err()
+
+    call object_get_idx(o, "cs", idx); check_err()
+    call a2dvec(o%vals(idx)%val_a, coef_l(0,:)); check_err()
+    call object_get_idx(o, "cp", idx); check_err()
+    call a2dvec(o%vals(idx)%val_a, coef_l(1,:)); check_err()
+    call object_get_idx(o, "cd", idx); check_err()
+    call a2dvec(o%vals(idx)%val_a, coef_l(2,:)); check_err()
+
+    ntypes(:) = ""
+    do js = 1, num
+       k0 = kstart(js)
+       k1 = k0+kng(js)-1
+       if(kmin(js)==1 .and. kmax(js)==1) then
+          ntypes(1) = "s"
+       else if(kmin(js)==1 .and. kmax(js)==4) then
+          ntypes(1) = "s"; ntypes(2) = "p";
+       else if(kmin(js)==2 .and. kmax(js)==4) then
+          ntypes(1) = "p"
+       else if(kmin(js)==5 .and. kmax(js)==10) then
+          ntypes(1) = "d"
+       else
+          throw_err("unsupported combination", 1)
+       end if
+       call Nshel_set(this, js, ntypes, &
+            kng(js), zs(k0:k1), coef_l(:,k0:k1), katom(js)) ; check_err()       
+    end do
+    
+  end subroutine Nshel_new_json
+  subroutine Nshel_new_file(this, fn)
+    use Mod_fjson
+    type(Obj_Nshel) :: this
+    character(*), intent(in) :: fn
+    type(value) :: v
+    type(object) :: o
+    integer, parameter :: ifile = 12319291
+
+    call loads_json_file(fn, ifile, v); check_err()
+    call value_get_o(v, o); check_err()
+
+    call Nshel_new_json(this, o); check_err()
+    
+    close(ifile)
+    
+  end subroutine Nshel_new_file
   subroutine Nshel_delete(this)
     type(Obj_Nshel) :: this
     integer :: i
@@ -136,7 +229,7 @@ contains
   subroutine Nshel_dump(this, in_ifile)
     type(Obj_Nshel) :: this
     integer, intent(in) , optional :: in_ifile
-    integer ifile, js, ia, j
+    integer ifile, js, ia, j, jg
     
     if(present(in_ifile)) then
        ifile = in_ifile
@@ -155,10 +248,18 @@ contains
        write(ifile,*) 
        write(ifile,'(A,I0,A)') " ---- jshel = ", js, " ----"
        write(ifile, '("w    = ", 3f10.5)') this%shels(js)%w(:)
-       write(ifile, '("zeta = ", f10.5)') this%shels(js)%zeta(:)
-        write(ifile,*) "j     n         coef"
+       write(ifile, '("zeta = ")', advance='no')
+       do jg = 1, this%shels(js)%ng
+          write(ifile,'(f10.5)',advance='no') this%shels(js)%zeta(jg)
+       end do
+       write(ifile, *)
+       write(ifile,*) "j     n         coef"
        do j = 1, this%shels(js)%num
-          write(ifile,'(I0,2x,3i3,2x,f10.5)') j, this%shels(js)%ns(j,:), this%shels(js)%coef(j,:)
+          write(ifile,'(I0,2x,3i3)',advance='no') j, this%shels(js)%ns(j,:)
+          do jg = 1, this%shels(js)%ng
+             write(ifile,'(2x,f10.5)',advance='no') this%shels(js)%coef(j,jg)
+          end do
+          write(ifile,*) 
        end do
     end do
     
@@ -172,14 +273,17 @@ contains
     integer, intent(in) :: ia
     integer it, num, j, jj
 
+    write(*,*) "in Nshel.set", ng, size(zeta), size(coef_l(0,:))
+
     num = 0
     do it = 1, size(ntypes)
-       if(is_in_s(ntypes, "s")) then
+       if(ntypes(it) == "s") then
           num = num + 1
-       else if(is_in_s(ntypes, "p")) then
+       else if(ntypes(it) == "p") then
           num = num + 3
-       else if(is_in_s(ntypes, "d")) then
+       else if(ntypes(it) == "d") then
           num = num + 6
+       else if(is_in_s(ntypes,"")) then
        else
           throw_err("unsupported", 1)
        end if
@@ -190,11 +294,11 @@ contains
     this%shels(js)%zeta(:) = zeta(1:ng)
     j = 1
     do it = 1, size(ntypes)
-       if(is_in_s(ntypes, "s")) then
+       if(ntypes(it) == "s") then
           this%shels(js)%ns(j,:) = (/0,0,0/)
           this%shels(js)%coef(j,:) = coef_l(0,1:ng)
           j = j + 1
-       else if(is_in_s(ntypes, "p")) then
+       else if(ntypes(it) == "p") then
           this%shels(js)%ns(j+0,:) = (/1,0,0/)
           this%shels(js)%ns(j+1,:) = (/0,1,0/)
           this%shels(js)%ns(j+2,:) = (/0,0,1/)
@@ -202,7 +306,7 @@ contains
              this%shels(js)%coef(jj,:) = coef_l(1,1:ng)
           end do
           j = j + 3
-       else if(is_in_s(ntypes, "d")) then
+       else if(ntypes(it) == "d") then
           this%shels(js)%ns(j+0,:) = (/2,0,0/)
           this%shels(js)%ns(j+1,:) = (/0,2,0/)
           this%shels(js)%ns(j+2,:) = (/0,0,2/)
@@ -213,6 +317,7 @@ contains
              this%shels(js)%coef(jj,:) = coef_l(2,1:ng)
           end do
           j = j + 6
+       else if(ntypes(it) == "") then
        else
           throw_err("unsupported", 1)
        end if
@@ -233,7 +338,6 @@ contains
     do i = 1, this%num
        this%j0s(i) = j0
        j0 = j0 + this%shels(i)%num
-       write(*,*) this%shels(i)%num
     end do
 
     this%nbasis = j0
@@ -263,7 +367,6 @@ contains
     double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
     double precision :: d(3,0:5,0:5,0:10), acc, coef
 
-    write(*,*) "wa!"
     mat = 0
     do js = 1, this%num
        do ks = 1, this%num    
@@ -295,7 +398,6 @@ contains
                            * this%shels(ks)%coef(kk,kg)
                       j = this%j0s(js) + jj
                       k = this%j0s(ks) + kk
-                      write(*,*) j,k,acc,coef
                       mat(j,k) = mat(j,k) + coef*acc
                    end do
                 end do
@@ -311,8 +413,12 @@ contains
     double precision :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), ir, jr, j, k, nkp(3)
     double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    double precision :: d(3,0:5,0:5,0:10), acc, coef, cum
+    double precision :: acc, coef, cum
+    double precision, allocatable :: d(:,:,:,:)
 
+    allocate(d(1:3, 0:10, 0:10, 0:0))
+    
+    mat(:,:) = 0
     do js = 1, this%num
        do ks = 1, this%num
           wj(:) = this%shels(js)%w(:)
@@ -329,19 +435,19 @@ contains
                 wp(:) = (zj*wj(:) + zk*wk(:))/zp
                 ep = exp(-zj*zk/zp*d2)
                 cp = ep*(pi/zp)**(1.5)
-                call coef_d(zp,wp,wj,wk,maxnj,maxnk,0, d); check_err()
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk+2,0, d); check_err()
 
                 do jj = 1, this%shels(js)%num
                    do kk = 1, this%shels(ks)%num
                       nj(:) = this%shels(js)%ns(jj,:)
                       nk(:) = this%shels(ks)%ns(kk,:)
-
+                      
                       cum = 0
                       acc = 1
                       do ir = 1, 3
                          acc = acc * d(ir,nj(ir),nk(ir),0)
                       end do
-                      cum = cum + 2*zk*(2*sum(nk)+3)*acc
+                      cum = cum - 2*zk*(2*sum(nk)+3)*acc
 
                       do jr = 1, 3
                          nkp(:) = nk(:); nkp(jr) = nkp(jr)+2
@@ -351,27 +457,29 @@ contains
                          end do
                          cum = cum + 4*zk*zk*acc
                          
-                         if(nk(jr)<2) continue
-                         nkp(:) = nk(:); nkp(jr) = nkp(jr)-2
-                         acc = 1
-                         do ir = 1, 3
-                            acc = acc * d(ir,nj(ir),nkp(ir),0)
-                         end do
-                         cum = cum + nk(jr)*(nk(jr)-1)*acc
-                         
+                         if(nk(jr)>1) then
+                            nkp(:) = nk(:); nkp(jr) = nkp(jr)-2
+                            acc = 1
+                            do ir = 1, 3
+                               acc = acc * d(ir,nj(ir),nkp(ir),0)
+                            end do
+                            cum = cum + nk(jr)*(nk(jr)-1)*acc
+                         end if
                       end do
                       
                       coef = cp * this%shels(js)%coef(jj,jg) &
                            * this%shels(ks)%coef(kk,kg)
                       j = this%j0s(js) + jj
                       k = this%j0s(ks) + kk
-                      mat(j,k) = mat(j,k) + coef*acc
+                      mat(j,k) = mat(j,k) + coef*cum
                    end do
                 end do
              end do
           end do
        end do
-    end do    
+    end do
+    mat(:,:) = -mat(:,:)/2
+    deallocate(d)
   end subroutine Nshel_t
   ! == calculation functions == 
   recursive function coef_d1(zp,wp,wj,wk,nj,nk,n) result(res)

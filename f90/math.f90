@@ -37,7 +37,7 @@ contains
 end module Mod_Vector
 
 module Mod_math
-  use mod_err_handle
+  use mod_ErrHandle
   use mod_const
   implicit none
 contains  
@@ -164,10 +164,10 @@ contains
     n = size(c)
     if(size(A, 1).ne.n .or. size(A,2).ne.n) then
        begin_err(1)
-       call err_1("size mismatch")
-       call err_si("size(c):", n)
-       call err_si("size(A,1):", size(A, 1))
-       call err_si("size(A,2):", size(A, 2))
+       write(*,*) "size mismatch"
+       write(*,*) "size(c):", n
+       write(*,*) "size(A,1):", size(A, 1)
+       write(*,*) "size(A,2):", size(A, 2)
        end_err()
     end if
     res = 0.0d0
@@ -177,12 +177,18 @@ contains
        end do
     end do
   end function expect_dot
-  subroutine dump_dmat(x, ifile, in_eps)
+  subroutine dump_dmat(x, in_ifile, in_eps)
     double precision, intent(in) :: x(:,:)
-    integer, intent(in) :: ifile
+    integer, intent(in), optional :: in_ifile
     double precision, optional, intent(in) :: in_eps
-    integer i, j
+    integer i, j, ifile
     double precision :: eps
+
+    if(present(in_ifile)) then
+       ifile = in_ifile
+    else
+       ifile = 6
+    end if
 
     if(present(in_eps)) then
        eps = in_eps
@@ -210,33 +216,17 @@ contains
   end subroutine dump_dvec
   subroutine load_dmat(ifile, x)
     integer, intent(in) :: ifile
-    double precision, allocatable :: x(:,:)
-    integer :: i, j, n, m
+    double precision, intent(out) :: x(:,:)
+    integer :: i, j
     double precision :: v
-
-    n = 0
-    m = 0
-    read(ifile, *)
-    do 
-       read(ifile,*,end=100) i,j,v
-       if(n<i) n=i
-       if(m<j) m=j
-    end do    
-       
-100 continue
     
-    if(allocated(x)) then
-       deallocate(x)
-    end if
-
-    allocate(x(n,m))
-
-    rewind(ifile)
     read(ifile,*)
     do 
-       read(ifile,*,end=100) i,j,v
+       read(ifile,*,end=200) i,j,v
        x(i,j) = v
     end do
+
+200 continue    
     
   end subroutine load_dmat
   subroutine t2s(t,s)
@@ -260,7 +250,6 @@ contains
     end do
   end subroutine t2s
   subroutine is_i(str, res)
-    use mod_err_handle
     implicit none
   
     character(*) str
@@ -315,7 +304,6 @@ contains
     return
   end subroutine is_d
   subroutine convert_i(str, a)
-    use mod_err_handle
     character(*) str
     integer   a
     
@@ -328,19 +316,18 @@ contains
     read(str, *, err=999) a
     if(abs(d-a) > eps) then
        begin_err(1)
-       call err_ss("input data may be real number\n", "");
-       call err_ss("str: ", str)
+       write(0,*) "input data may be real number"
+       write(0,*) "str: ", str
        end_err();
     end if
     return
 999 continue
     begin_err(1)
-    call err_ss("failed to convert to integer", "")
-    call err_ss("str: ", str)
+    write(0,*) "failed to convert to integer"
+    write(0,*) "str: ", str
     end_err()
   end subroutine convert_i
   subroutine convert_d(str, a)
-    use mod_err_handle
     character(*) str
     double precision    a
 
@@ -352,42 +339,10 @@ contains
     write(0,*) "str", str
     end_err()
   end subroutine convert_d
-  subroutine print_mat(name, X, ifile)
-    character(*), intent(in) :: name
-    complex(kind(0d0)), intent(in) :: X(:, :)
-    integer,  optional :: ifile
-    integer n, i, ifi
-
-    if(present(ifile)) then
-       ifi = ifile
-    else
-       ifi = 6
-    end if
-    
-    n = size(X, 1)
-    write(ifi,*) "mat:", name
-    do i = 1, n
-       write(ifi,'(I4)', advance='no') i
-       write(ifi,*) X(i, :)
-    end do
-  end subroutine print_mat
-  subroutine print_dmat(name, X)
-    character(*), intent(in) :: name
-    double precision, intent(in) :: X(:, :)
-    integer n, m, i, j
-    n = size(X, 1)
-    m = size(X, 2)
-    write(*,*) "mat:", name
-    do i = 1, n
-       do j = 1, m
-          write(*,'(2I5, F20.10)') i, j, X(i, j)
-       end do
-    end do
-  end subroutine print_dmat
 end module Mod_math
 
 module Mod_Sparse
-  use mod_err_handle
+  use mod_ErrHandle
   implicit none
   type Sparse
      integer :: n, size, capacity
