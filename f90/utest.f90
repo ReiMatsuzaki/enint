@@ -1,11 +1,11 @@
-#include "macros.fpp"
+#include "macros_err.fpp"
 
 !     Unit test utilities
 
 !
 ! TODO
 ! more pretty message !
-module mod_utest_check
+module Mod_UtestCheck
   implicit none
   interface utest_check_near
      subroutine check_near_d(a, b, eps, a_str, b_str, file, line, stopq)
@@ -88,8 +88,8 @@ module mod_utest_check
        logical stopq
      end subroutine check_eq_s_0
   end interface utest_check_eq_0
-end module mod_utest_check
-module mod_utest
+end module Mod_UtestCheck
+module mod_Utest
   implicit none
 !  private
   integer, save, private :: num_utest
@@ -132,7 +132,7 @@ contains
     return
   end subroutine utest_check_fail
   
-end module mod_utest
+end module mod_Utest
 
 ! ==== main ====
 subroutine check_near_d(a,b,eps,a_str,b_str,file,line,stopq)

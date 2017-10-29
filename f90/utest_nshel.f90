@@ -1,4 +1,5 @@
-#include "macros.fpp"
+#include "macros_err.fpp"
+#include "macros_utest.fpp"
 
 module Mod_TestNshel
   use Mod_ErrHandle
@@ -9,6 +10,7 @@ contains
   subroutine TestNshel_run()
     call test_coef()
     call test_smat()
+    call test_h2()
   end subroutine TestNshel_run
   subroutine test_coef()
     write(*,*)
@@ -71,6 +73,28 @@ contains
 
     
   end subroutine test_smat
+  subroutine test_h2()
+
+    integer :: ifile = 12323
+    double precision, allocatable :: smat
+
+    write(*,*)
+    write(*,*) "--------------------"
+    write(*,*) "TestNshel_h2 begin"
+    write(*,*)
+    
+    call open_r(ifile, "../gms/h2/out/s.csv"); check_err()
+    call load_dmat(ifile, smat); check_err()
+
+    deallocate(smat)
+    close(ifile)
+
+    write(*,*)
+    write(*,*) "TestNshel_h2 end"
+    write(*,*) "--------------------"    
+    write(*,*)    
+    
+  end subroutine test_h2
 end module Mod_TestNshel
 
 program main

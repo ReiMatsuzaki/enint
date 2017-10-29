@@ -14,11 +14,33 @@ contains
   end subroutine gauss_at
 end module Mod_gauss
 
+module Mod_Vector
+  type Obj_VectorI
+     integer, pointer :: xs(:)
+     integer :: num
+     integer :: capacity
+  end type Obj_VectorI
+contains
+  subroutine VectorI_new(this, capacity)
+    type(Obj_VectorI) :: this
+    integer, intent(in) :: capacity
+    allocate(this%xs(capacity))
+    this%num = 0
+    this%capacity = capacity
+  end subroutine VectorI_new
+  subroutine VectorI_add(this, x)
+    type(Obj_VectorI) :: this
+    integer, intent(in) :: x
+    this%num = this%num + 1
+    this%xs(this%num) = x
+  end subroutine VectorI_add
+end module Mod_Vector
+
 module Mod_math
   use mod_err_handle
   use mod_const
   implicit none
-contains
+contains  
   function tdot(a, b) result(res)
     complex(kind(0d0)), intent(in) :: a(:), b(:)
     complex(kind(0d0)) res
@@ -186,6 +208,37 @@ contains
        write(ifile,'(i0,",",f20.10)') i,x(i)
     end do
   end subroutine dump_dvec
+  subroutine load_dmat(ifile, x)
+    integer, intent(in) :: ifile
+    double precision, allocatable :: x(:,:)
+    integer :: i, j, n, m
+    double precision :: v
+
+    n = 0
+    m = 0
+    read(ifile, *)
+    do 
+       read(ifile,*,end=100) i,j,v
+       if(n<i) n=i
+       if(m<j) m=j
+    end do    
+       
+100 continue
+    
+    if(allocated(x)) then
+       deallocate(x)
+    end if
+
+    allocate(x(n,m))
+
+    rewind(ifile)
+    read(ifile,*)
+    do 
+       read(ifile,*,end=100) i,j,v
+       x(i,j) = v
+    end do
+    
+  end subroutine load_dmat
   subroutine t2s(t,s)
     ! Copied from mangan4 written by K.Yamamoto
     ! Matrix transformation: packet strage -> symmetric.
@@ -298,7 +351,7 @@ contains
     write(0,*) "failed to convert to real"
     write(0,*) "str", str
     end_err()
-  end subroutine convert_d  
+  end subroutine convert_d
   subroutine print_mat(name, X, ifile)
     character(*), intent(in) :: name
     complex(kind(0d0)), intent(in) :: X(:, :)

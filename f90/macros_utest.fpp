@@ -1,4 +1,4 @@
-#ifndef MACROS_FPP
+#ifndef MACROS_UTEST_FPP
 
       
 !     Unit test
@@ -27,13 +27,5 @@
 #define assert_false(a)  utest_check_false_0((a), (__FILE__), (__LINE__), .TRUE.)
 
 #endif
-      
-!     Error handling
-#define throw_err(msg, ierr0) call err_with_file_line(msg, ierr0, (__FILE__), (__LINE__)); return
-#define throw_err_stop(msg, ierr0) call err_with_file_line(msg, ierr0, (__FILE__), (__LINE__)); stop
-#define begin_err(ierr0) call err_with_file_line("", ierr0, (__FILE__), (__LINE__));
-#define end_err() return
-#define check_err() if(ierr .ne. 0) begin_err(ierr); if(ierr .ne. 0) return
-#define check_err_stop() if(ierr.ne.0) begin_err(ierr); if(ierr.ne.0) stop
-#define get_err() ierr
+
 #endif
