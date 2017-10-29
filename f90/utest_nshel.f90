@@ -8,13 +8,14 @@ module Mod_TestNshel
   implicit none
 contains
   subroutine TestNshel_run()
-    call test_coef()
+    call test_coef_d()
+    call test_coef_r()
     call test_smat()
     call test_h2()
   end subroutine TestNshel_run
-  subroutine test_coef()
+  subroutine test_coef_d()
     write(*,*) "--------------------"
-    write(*,*) "TestNshel_coef begin"
+    write(*,*) "TestNshel_coef_d begin"
     
     ![[[ 1.      0.      0.      0.      0.      0.    ]
     ![-0.2     0.5     0.      0.      0.      0.    ]
@@ -32,10 +33,17 @@ contains
     call expect_eq(-0.2d0, coef_d1(1.0d0,1.1d0,1.2d0,1.3d0, 0,1,0))
     call expect_eq(0.54d0, coef_d1(1.0d0,1.1d0,1.2d0,1.3d0, 0,2,0))
 
-    write(*,*) "TestNshel_coef end"
+    write(*,*) "TestNshel_coef_d end"
     write(*,*) "--------------------"
     
-  end subroutine test_coef
+  end subroutine test_coef_d
+  subroutine test_coef_r()
+    write(*,*) "--------------------"
+    write(*,*) "TestNshel_coef_r begin"
+    write(*,*) "TestNshel_coef_r end"
+    write(*,*) "--------------------"
+    
+  end subroutine test_coef_r
   subroutine test_smat()
     type(Obj_Nshel) nshel
     integer :: ns(1,3)
@@ -69,7 +77,7 @@ contains
   subroutine test_h2()
     use Mod_math
     integer :: ifile = 12323
-    double precision, allocatable :: calc(:,:), ref(:,:)
+    double precision, allocatable :: calc(:,:), ref(:,:), v(:,:)
     type(Obj_Nshel) nshel
     integer :: num
 
@@ -79,9 +87,8 @@ contains
     ! -- new --
     call Nshel_new_file(nshel, "../gms/h2/out/nshel.json"); check_err()
     call Nshel_setup(nshel); check_err()
-    call Nshel_dump(nshel); check_err()
     num = nshel%nbasis
-    allocate(ref(num,num), calc(num,num))
+    allocate(ref(num,num), calc(num,num), v(num,num))
 
     ! -- s matrix --
     call Nshel_s(nshel, calc); check_err()
@@ -95,6 +102,16 @@ contains
     call open_r(ifile, "../gms/h2/out/t.csv"); check_err()    
     call load_dmat(ifile, ref); check_err()
 
+    ! -- v matrix --
+    call Nshel_v(nshel, v); check_err()
+    call Nshel_t(nshel, calc); check_err()
+    calc(:,:) = calc(:,:) + v(:,:)
+    call open_r(ifile, "../gms/h2/out/h.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()    
+
+    write(*,*) calc
+    write(*,*) ref
+    
     call expect_near_dmat(ref, calc, 10.0d0**(-7))
     close(ifile)
     

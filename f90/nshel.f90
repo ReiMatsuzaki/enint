@@ -481,6 +481,69 @@ contains
     mat(:,:) = -mat(:,:)/2
     deallocate(d)
   end subroutine Nshel_t
+  subroutine Nshel_v(this, mat)
+    use Mod_const, only : pi
+    type(Obj_Nshel) :: this
+    double precision :: mat(:,:)
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ic, maxn
+    integer nx, ny, nz
+    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wc(3), ep, ccp, q
+    double precision :: d(3,0:5,0:5,0:10), acc, coef, cr(0:10,0:10,0:10)
+
+    mat = 0
+    do js = 1, this%num
+       do ks = 1, this%num    
+          wj(:) = this%shels(js)%w(:)
+          wk(:) = this%shels(ks)%w(:)
+          d2 = dot_product(wj-wk,wj-wk)
+          maxnj = this%shels(js)%maxn
+          maxnk = this%shels(ks)%maxn
+
+          do jg = 1, this%shels(js)%ng
+             do kg = 1, this%shels(ks)%ng
+                zj = this%shels(js)%zeta(jg)
+                zk = this%shels(ks)%zeta(kg)
+                zp = zj+zk
+                wp(:) = (zj*wj(:) + zk*wk(:))/zp
+                ep = exp(-zj*zk/zp*d2)
+                ccp = -2*pi*ep/zp
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk,0, d); check_err()
+
+                do ic = 1, this%nucs%num
+                   maxn = this%shels(js)%maxn + this%shels(ks)%maxn
+                   wc(:) = this%nucs%ws(ic,:)
+                   q = this%nucs%zs(ic)
+                   call coef_R(zp,wp,wc,maxn, cr); check_err()
+                   do jj = 1, this%shels(js)%num
+                      do kk = 1, this%shels(ks)%num                      
+                         nj(:) = this%shels(js)%ns(jj,:)
+                         nk(:) = this%shels(ks)%ns(kk,:)
+                         
+                         acc = 0
+                         do nx = 0, nj(1)+nk(1)
+                            do ny = 0, nj(2)+nk(2)
+                               do nz = 0, nj(3)+nk(3)
+                                  acc = acc + cr(nx,ny,nz) * q * &
+                                       d(1,nj(1),nk(1),nx) * &
+                                       d(2,nj(2),nk(2),ny) * &
+                                       d(3,nj(3),nk(3),nz)
+                               end do
+                            end do
+                         end do
+                         coef = ccp * this%shels(js)%coef(jj,jg) &
+                              * this%shels(ks)%coef(kk,kg)
+                         j = this%j0s(js) + jj
+                         k = this%j0s(ks) + kk
+                         mat(j,k) = mat(j,k) + coef*acc
+                      end do
+                   end do
+                end do
+             end do
+          end do
+       end do
+    end do
+    
+  end subroutine Nshel_v
   ! == calculation functions == 
   recursive function coef_d1(zp,wp,wj,wk,nj,nk,n) result(res)
     double precision, intent(in) :: zp, wp, wj, wk
@@ -523,7 +586,11 @@ contains
     integer, intent(in) :: m
     double precision, intent(in) :: z
     double precision :: res
-    res = z**m
+
+    if(m==0) then
+       res = gamma(0.5d0)/(2*z**0.5d0) * gammainc(0.5d0, z)
+    else
+    end if
   end function mole_gammainc1
   subroutine mole_gammainc(maxm, z, res)
     integer, intent(in) :: maxm
@@ -549,6 +616,25 @@ contains
     end if
     
   end function coef_R1
+  subroutine coef_R(zp,wp,wc,maxn, cr)
+    double precision, intent(in) :: zp
+    double precision, intent(in) :: wp(3)
+    double precision, intent(in) :: wc(3)
+    integer, intent(in) :: maxn
+    double precision, intent(out) :: cr(0:,0:,0:)
+    integer nx, ny, nz, n(3)
+
+    do nx = 0, maxn
+       do ny = 0, maxn
+          do nz = 0, maxn
+             n(1) = nx; n(2) = ny; n(3) = nz
+             cr(nx,ny,nz) = coef_R1(zp,wp,wc,n,0)
+             check_err()
+          end do
+       end do
+    end do
+    
+  end subroutine coef_R
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)
