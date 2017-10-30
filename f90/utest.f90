@@ -36,6 +36,7 @@ contains
     end if
 
     call Timer_begin(title); check_err()
+    
     sub_title_ = title
     write(*,'("[ RUN     ] ", A)') trim(title)
     
@@ -155,6 +156,17 @@ module Mod_UtestCheck
      end subroutine check_eq_s_0
   end interface utest_check_eq_0
 contains
+  subroutine assert_near_d(a,b,eps)
+    double precision, intent(in) :: a,b,eps
+    if(abs(a-b)>eps) then
+       begin_err(1)
+       write(0,*) "a=", a
+       write(0,*) "b=", b
+       write(0,*) "abs(a-b)=", abs(a-b)
+       write(0,*) "eps=", eps
+       end_err()
+    end if
+  end subroutine assert_near_d
   subroutine expect_near_dmat(a, b, eps)    
     double precision, intent(in) :: a(:,:), b(:,:)
     double precision, intent(in) :: eps

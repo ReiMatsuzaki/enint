@@ -20,7 +20,11 @@ contains
 
     call Utest_sub_begin("coef_r")
     call test_coef_r()
-    call Utest_sub_end()
+    call Utest_sub_end(); check_err()
+
+    call Utest_sub_begin("fast_cr")
+    call test_coef_r_fast()
+    call Utest_sub_end(); check_err()
 
     call Utest_sub_begin("smat")
     call test_smat()
@@ -94,6 +98,29 @@ contains
     call expect_eq(0.0352501d0, cr(0,1,1))
     
   end subroutine test_coef_r
+  subroutine test_coef_r_fast()
+    double precision :: cr0(0:3,0:3,0:3), cr1(0:3,0:3,0:3)
+    double precision :: zp, wp(3), wc(3)
+    integer :: x,y,z
+
+    zp = 1.1d0
+    wp(:) = (/0.0d0,0.1d0,0.2d0/)
+    wc(:) = (/0.3d0,0.0d0,0.1d0/)
+    call coef_R(zp, wp, wc, 3, cr0, 0); check_err()
+    call coef_R(zp, wp, wc, 3, cr1, 1); check_err()
+
+    do x = 0, 3
+       do y = 0, 3
+          do z = 0, 3
+             call assert_near_d(cr0(x,y,z), cr1(x,y,z), 1.0d-10)
+             if(get_err().ne.0) then
+                write(0,*) "x,y,z=", x,y,z
+             end if
+          end do
+       end do
+    end do
+    
+  end subroutine test_coef_r_fast
   subroutine test_smat()
     type(Obj_Nshel) nshel
     integer :: ns(1,3)
@@ -212,9 +239,9 @@ program main
   call ErrHandle_new
 
   call TestNshel_run
-
-  call Timer_result
+  
   call ErrHandle_delete
+  call Timer_result
   call utest_delete
   
 end program main

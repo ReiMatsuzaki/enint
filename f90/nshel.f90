@@ -513,7 +513,8 @@ contains
                    maxn = this%shels(js)%maxn + this%shels(ks)%maxn
                    wc(:) = this%nucs%ws(ic,:)
                    q = this%nucs%zs(ic)
-                   call coef_R(zp,wp,wc,maxn, cr); check_err()
+                   !call coef_R(zp,wp,wc,maxn, cr); check_err()
+                   call coef_R(zp,wp,wc,maxn, cr, 1); check_err()
                    do jj = 1, this%shels(js)%num
                       do kk = 1, this%shels(ks)%num                      
                          nj(:) = this%shels(js)%ns(jj,:)
@@ -653,28 +654,109 @@ contains
     end if
     
   end function coef_R1
-  subroutine coef_R(zp,wp,wc,maxn, cr)
+  subroutine coef_R(zp,wp,wc,maxn, cr, in_method)
     use Mod_Timer
     double precision, intent(in) :: zp
     double precision, intent(in) :: wp(3)
     double precision, intent(in) :: wc(3)
     integer, intent(in) :: maxn
     double precision, intent(out) :: cr(0:,0:,0:)
-    integer nx, ny, nz, n(3)
+    integer, intent(in), optional :: in_method
+    integer method
+    integer nx, ny, nz, n(3)    
 
-    call Timer_begin("coef_R")
-    do nx = 0, maxn
-       do ny = 0, maxn
-          do nz = 0, maxn
-             n(1) = nx; n(2) = ny; n(3) = nz
-             cr(nx,ny,nz) = coef_R1(zp,wp,wc,n,0)
-             check_err()
+!    call Timer_begin("coef_R")
+
+    if(present(in_method)) then
+       method = in_method
+    else
+       method = 0
+    end if
+    
+    if(method.eq.0) then
+       do nx = 0, maxn
+          do ny = 0, maxn
+             do nz = 0, maxn
+                n(1) = nx; n(2) = ny; n(3) = nz
+                cr(nx,ny,nz) = coef_R1(zp,wp,wc,n,0)
+                check_err()
+             end do
+          end do
+       end do
+    else
+       call coef_R_fast(zp,wp,wc,maxn, cr); check_err()              
+    end if
+ !   call Timer_end("coef_R")
+    
+  end subroutine coef_R
+  subroutine coef_R_fast(zp,wp,wc,maxn, cr)
+    double precision, intent(in) :: zp
+    double precision, intent(in) :: wp(3)
+    double precision, intent(in) :: wc(3)
+    integer, intent(in) :: maxn
+    double precision, intent(out) :: cr(0:,0:,0:)
+    double precision, allocatable :: Fj(:)
+    double precision, allocatable :: rmap(:,:,:,:)
+    double precision :: wpc(3), d2, tmp
+    integer j, nnn, nx, ny, nz
+    
+    cr(:,:,:) = 0
+    wpc(:) = wp(:)-wc(:)
+    d2 = dot_product(wpc, wpc)
+
+    allocate(Fj(0:maxn*3))
+    allocate(rmap(0:maxn,0:maxn,0:maxn,0:3*maxn))
+
+    call mole_gammainc(3*maxn, zp*d2, Fj(:))
+
+    tmp = 1
+    do j = 0, 3*maxn
+       rmap(0,0,0,j) = tmp * Fj(j)
+       tmp = tmp*(-2*zp)
+    end do
+    !do j = 0, 3*maxn
+    !   rmap(0,0,0,j) = (-2*zp)**j * Fj(j)
+    !end do
+
+    do j = 0, 3*maxn-1
+       rmap(1,0,0,j) = wpc(1) * rmap(0,0,0,j+1)
+       rmap(0,1,0,j) = wpc(2) * rmap(0,0,0,j+1)
+       rmap(0,0,1,j) = wpc(3) * rmap(0,0,0,j+1)
+    end do
+
+    do nnn = 1, 3*maxn
+       do nx = 0, min(maxn, nnn)
+          do ny = 0, min(maxn, nnn-nx)
+             do nz = 0, min(maxn, nnn-nx-ny)
+                do j = 0, 3*maxn-nnn
+                   if(nx>0) then
+                      tmp = wpc(1)*rmap(nx-1,ny,nz,j+1)
+                      if(nx>1) then
+                         tmp = tmp + (nx-1)*rmap(nx-2,ny,nz,j+1)
+                      end if
+                      rmap(nx,ny,nz,j) = tmp
+                   else if(ny>0) then
+                      tmp = wpc(2)*rmap(nx,ny-1,nz,j+1)
+                      if(ny>1) then
+                         tmp = tmp + (ny-1)*rmap(nx,ny-2,nz,j+1)
+                      end if
+                      rmap(nx,ny,nz,j) = tmp                      
+                   else if(nz>0) then
+                      tmp = wpc(3)*rmap(nx,ny,nz-1,j+1)
+                      if(nz>1) then
+                         tmp = tmp + (nz-1)*rmap(nx,ny,nz-2,j+1)
+                      end if
+                      rmap(nx,ny,nz,j) = tmp                      
+                   end if
+                end do
+             end do
           end do
        end do
     end do
-    call Timer_end("coef_R")
-    
-  end subroutine coef_R
+
+    cr(0:maxn,0:maxn,0:maxn) = rmap(:,:,:,0)
+        
+  end subroutine coef_R_fast
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)
