@@ -119,6 +119,47 @@ contains
     end do
     
   end subroutine expect_near_dmat
+  subroutine expect_not_NaN_d(a)
+    use Mod_Utest
+    use Mod_ErrHandle
+    double precision, intent(in) :: a
+    call utest_check_begin
+    if(.not. (0<a .or. a<1)) then
+       begin_err(1)
+       write(0,*) "value is NaN"
+       end_err()
+    end if
+  end subroutine expect_not_NaN_d
+  subroutine expect_prop_dmat(a, prop)
+    use Mod_Utest
+    use Mod_ErrHandle
+    double precision, intent(in) :: a(:,:)
+    character(*),intent(in) :: prop
+    integer :: n, m, i, j
+    n = size(a,1)
+    m = size(a,2)
+
+    do i = 1, n
+       do j = 1, m
+          call expect_not_NaN_d(a(i,j))
+          if(get_err().ne.0) then
+             begin_err(1)
+             write(0,*) "matrix element is NaN"
+             write(0,*) "i=", i
+             write(0,*) "j=", j
+             end_err()
+          end if
+       end do
+    end do
+    
+    if(prop=="overlap") then
+
+    else
+       begin_err(2)
+       write(0,*) "prop<-overlap"
+       end_err()
+    end if
+  end subroutine expect_prop_dmat
 end module Mod_UtestCheck
 module mod_Utest
   implicit none

@@ -176,6 +176,7 @@ contains
     ! -- new --
     call Nshel_new_file(nshel, "../gms/hcp/out/nshel.json"); check_err()
     call Nshel_setup(nshel); check_err()
+    call Nshel_dump(nshel)
     num = nshel%nbasis
     allocate(ref(num,num), calc(num,num), v(num,num))
 
@@ -183,7 +184,8 @@ contains
     call Nshel_s(nshel, calc); check_err()
     call open_r(ifile, "../gms/hcp/out/s.csv"); check_err()    
     call load_dmat(ifile, ref); check_err()
-    call expect_near_dmat(ref, calc, 10.0d0**(-7))
+    call expect_prop_dmat(calc, "overlap"); check_err()
+    call expect_near_dmat(ref, calc, 10.0d0**(-7)); check_err()
     close(ifile)
 
     ! -- t matrix --

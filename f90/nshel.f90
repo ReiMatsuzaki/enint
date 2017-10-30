@@ -138,9 +138,9 @@ contains
     call object_get_i(o, "nshell", num); check_err()
 
     call object_get_idx(o, "katom", idx); check_err()
-    call array_get_size(o%vals(idx)%val_a, natom); check_err()
-    allocate(katom(natom))
-    call a2ivec(o%vals(idx)%val_a, katom); check_err()    
+    allocate(katom(num))
+    call a2ivec(o%vals(idx)%val_a, katom); check_err()
+    natom = maxval(katom(:))
 
     ! -- allocate --
     call Nshel_new(this, natom, num); check_err()
@@ -229,7 +229,7 @@ contains
   subroutine Nshel_dump(this, in_ifile)
     type(Obj_Nshel) :: this
     integer, intent(in) , optional :: in_ifile
-    integer ifile, js, ia, j, jg
+    integer ifile, js, ia, j, jj, jg
     
     if(present(in_ifile)) then
        ifile = in_ifile
@@ -253,11 +253,12 @@ contains
           write(ifile,'(f10.5)',advance='no') this%shels(js)%zeta(jg)
        end do
        write(ifile, *)
-       write(ifile,*) "j     n         coef"
-       do j = 1, this%shels(js)%num
-          write(ifile,'(I0,2x,3i3)',advance='no') j, this%shels(js)%ns(j,:)
+       write(ifile,'(A4, A4, A10)') "j", "jj", "   n        coef"
+       do jj = 1, this%shels(js)%num
+          j = this%j0s(js)+jj
+          write(ifile,'(I4,I4,3i3)',advance='no') j, jj, this%shels(js)%ns(jj,:)
           do jg = 1, this%shels(js)%ng
-             write(ifile,'(2x,f10.5)',advance='no') this%shels(js)%coef(j,jg)
+             write(ifile,'(2x,f10.5)',advance='no') this%shels(js)%coef(jj,jg)
           end do
           write(ifile,*) 
        end do
