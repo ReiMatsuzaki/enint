@@ -206,15 +206,12 @@ contains
     type(Obj_Nshel) :: this
     character(*), intent(in) :: fn
     type(value) :: v
-    type(object) :: o
     integer, parameter :: ifile = 12319291
 
     call loads_json_file(fn, ifile, v); check_err()
-    call value_get_o(v, o); check_err()
-
-    call Nshel_new_json(this, o); check_err()
-    
     close(ifile)
+    call Nshel_new_json(this, v%val_o); check_err()
+    call value_delete(v)
     
   end subroutine Nshel_new_file
   subroutine Nshel_delete(this)

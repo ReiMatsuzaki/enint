@@ -2,7 +2,7 @@ include ../local.mk
 
 # ==== Common ====
 FF:=${FF}
-MODS0=const write_title err_handle timer sys convert istream fjson math timestep 
+MODS0=err_handle timer const math istream fjson
 
 # -- Directories --
 SRC=${NAEWDY_PATH}/src
@@ -23,9 +23,20 @@ clean:
 
 # ==== utest(nshel) ====
 TARGET=utest_nshel
-MODULES=err_handle timer const math istream fjson utest nshel ${TARGET}
+MODULES=${MODS0} utest nshel ${TARGET}
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_nshel: ${OBJS}
+	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
+check_nshel: ${BUILD}/utest_nshel
+	${BUILD}/utest_nshel
+
+# ==== Endvr ====
+TARGET=endvr
+MODULES=${MODS0} nshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/${TARGET}: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
-check_nshel: ${BUILD}/${TARGET}
-	${BUILD}/${TARGET}
+check_${TARGET}: ${BUILD}/${TARGET}
+	${BUILD}/${TARGET} ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
+
+
