@@ -1,11 +1,13 @@
 import unittest
 import time
 import os
+import sys
+join = os.path.join
 
 import pandas as pd
 
-from naewdy2.nsh import *
-from naewdy2.math import ijv2mat
+from enint.nsh import *
+from enint.math import ijv2mat
 
 class TestCase(unittest.TestCase):
     def assertMatProp(self,mattype,a,msg=""):
@@ -103,7 +105,7 @@ class TestNsh(TestCase):
         calc = gtoele(g1, op_dw(2), g0)
         self.assertAlmostEqual(ref, calc, 5)
 
-    def _test_gammainc(self):
+    def test_gammainc(self):
         from scipy import integrate
         import numpy as np
 
@@ -129,49 +131,6 @@ calc = {1}
         #print gtoele(g1, prim_na(c), g0)
             
 class TestMatEle(TestCase):
-    def setUp(self):
-        with open("gms/out/nshel.json") as f:
-            j = json.load(f)
-            self.gs = nshel2gto(j, True)
-            self.c = j["c"]
-            self.zan = j["zan"]
-        
-    def _test_smat(self):
-        
-        calc = gtomat(self.gs, op_s())
-        df = pd.read_csv("gms/out/s.csv")
-        ref  = ijv2mat(df)
-        
-        self.assertMatEqual(ref, calc)
-            
-    def _test_tmat(self):
-        calc = gtomat(self.gs, op_t())
-        df = pd.read_csv("gms/out/t.csv")
-        ref  = ijv2mat(df)
-        self.assertMatEqual(ref, calc)
-        #self.assertAlmostEqual(0.0, np.max(abs(calc-ref)))
-        
-    def _test_hmat(self):
-        
-        print "basis size:", len(self.gs)
-        
-        t0 = time.time()        
-        calc = gtomat(self.gs, op_t())
-        t1 = time.time()
-        for ia in range(3):
-            z = self.zan[ia]
-            wc = [self.c[ir][ia] for ir in range(3)]
-            calc += z*gtomat(self.gs, op_na(wc))
-        t2 = time.time()        
-        df = pd.read_csv("gms/out/h.csv")
-        ref = ijv2mat(df)
-        self.assertMatEqual(ref,calc)
-        t3 = time.time()
-
-        print "calc tmat:", t1-t0
-        print "calc vmat:", t2-t1
-        print "check mat:", t3-t2    
-
     def test_nshel(self):
 
         nucs = Nucs()
@@ -201,7 +160,7 @@ class TestMatEle(TestCase):
         self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")   
 
     def test_nshel_h2(self):
-        out = "gms/h2/out"
+        out = "../../gms/h2/out"
         with open(os.path.join(out, "nshel.json")) as f:
             j = json.load(f)
             nshel = nshel_load(j)
@@ -223,8 +182,9 @@ class TestMatEle(TestCase):
         self.assertMatEqual(ref, calc, msg="test_nshel_h2. H core matrix")        
         
     def test_nshel_gms(self):
+        out = "../../gms/hcp/out"
 
-        with open("gms/out/nshel.json") as f:
+        with open(join(out, "nshel.json")) as f:
             j = json.load(f)
             nshel = nshel_load(j)
             nshel.setup(True)
@@ -232,19 +192,19 @@ class TestMatEle(TestCase):
 
         calc = nshel.smat()
         self.assertMatProp("overlap", calc)
-        df = pd.read_csv("gms/out/s.csv")
+        df = pd.read_csv(join(out, "s.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc)
 
         calc = nshel.tmat()
         self.assertMatProp("hermite", calc)
-        df = pd.read_csv("gms/out/t.csv")
+        df = pd.read_csv(join(out, "t.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc)
 
         calc = nshel.tmat() + nshel.vmat()
         self.assertMatProp("hermite", calc)
-        df = pd.read_csv("gms/out/h.csv")
+        df = pd.read_csv(join(out, "h.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_neshl_gms. H core")        
 

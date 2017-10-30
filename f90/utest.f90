@@ -95,8 +95,6 @@ contains
     double precision, intent(in) :: a(:,:), b(:,:)
     double precision, intent(in) :: eps
     integer i, j
-
-    write(*,*) size(a,1), size(b,1), size(a,2), size(b,2)
     
     call utest_check_begin
     if(size(a,1).ne.size(b,1) .or. size(a,2).ne.size(b,2)) then

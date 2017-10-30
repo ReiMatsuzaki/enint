@@ -9,9 +9,11 @@ module Mod_TestNshel
 contains
   subroutine TestNshel_run()
     call test_coef_d()
+    call test_gammainc()
     call test_coef_r()
     call test_smat()
     call test_h2()
+    call test_hcp()
   end subroutine TestNshel_run
   subroutine test_coef_d()
     write(*,*) "--------------------"
@@ -37,9 +39,50 @@ contains
     write(*,*) "--------------------"
     
   end subroutine test_coef_d
+  subroutine test_gammainc()
+    ! see ${ENINT}/py/for_f90/
+    !    0 1.0 0.746824132812
+    !    1 1.1 0.179771018184
+    !    2 3.3 0.0251274571212
+    !    3 0.0 0.142857142857
+    double precision :: fs(0:5)
+    
+    write(*,*) "--------------------"
+    write(*,*) "TestNshel_gammainc begin"    
+    
+    call mole_gammainc(2, 1.0d0, fs); check_err()
+    call expect_eq(0.746824132812d0, fs(0))
+
+    call mole_gammainc(2, 1.1d0, fs); check_err()
+    call expect_eq(0.179771018184d0, fs(1))
+
+    call mole_gammainc(2, 3.3d0, fs); check_err()
+    call expect_eq(0.0251274571212d0, fs(2))
+
+    call mole_gammainc(3, 0.0d0, fs); check_err()
+    call expect_eq(0.142857142857d0, fs(3))
+
+    write(*,*) "TestNshel_gammainc end"        
+    write(*,*) "--------------------"
+    
+  end subroutine test_gammainc
   subroutine test_coef_r()
+    ! see ${ENINT}/py/for_f90
+    ! print coef_R_list(1.1, [0.0,0.1,0.2], [0.2,0.3,0.4], 1, 0)    
+    ![[[ 0.95768901  0.13558003]
+    !  [ 0.13558003  0.0352501 ]]
+    !
+    ! [[ 0.13558003  0.0352501 ]
+    !  [ 0.0352501   0.0109848 ]]]
+    double precision :: cr(0:1,0:1,0:1)
     write(*,*) "--------------------"
     write(*,*) "TestNshel_coef_r begin"
+
+    call coef_R(1.1d0, (/0.0d0,0.1d0,0.2d0/), &
+         (/0.2d0,0.3d0,0.4d0/),1, cr)
+
+    call expect_eq(0.95768901d0, cr(0,0,0))
+    
     write(*,*) "TestNshel_coef_r end"
     write(*,*) "--------------------"
     
@@ -74,7 +117,7 @@ contains
     write(*,*) "--------------------"
 
   end subroutine test_smat
-  subroutine test_h2()
+  subroutine test_h2()    
     use Mod_math
     integer :: ifile = 12323
     double precision, allocatable :: calc(:,:), ref(:,:), v(:,:)
@@ -101,19 +144,15 @@ contains
     call Nshel_t(nshel, calc); check_err()
     call open_r(ifile, "../gms/h2/out/t.csv"); check_err()    
     call load_dmat(ifile, ref); check_err()
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
 
-    ! -- v matrix --
+    ! -- h matrix --
     call Nshel_v(nshel, v); check_err()
     call Nshel_t(nshel, calc); check_err()
     calc(:,:) = calc(:,:) + v(:,:)
     call open_r(ifile, "../gms/h2/out/h.csv"); check_err()    
     call load_dmat(ifile, ref); check_err()    
-
-    write(*,*) calc
-    write(*,*) ref
-    
     call expect_near_dmat(ref, calc, 10.0d0**(-7))
-    close(ifile)
     
     ! -- delete --
     call Nshel_delete(nshel); check_err()
@@ -124,6 +163,52 @@ contains
     write(*,*) "--------------------"    
     
   end subroutine test_h2
+  subroutine test_hcp()
+    use Mod_math
+    integer :: ifile = 12323
+    double precision, allocatable :: calc(:,:), ref(:,:), v(:,:)
+    type(Obj_Nshel) nshel
+    integer :: num
+
+    write(*,*) "--------------------"
+    write(*,*) "TestNshel_hcp begin"
+
+    ! -- new --
+    call Nshel_new_file(nshel, "../gms/hcp/out/nshel.json"); check_err()
+    call Nshel_setup(nshel); check_err()
+    num = nshel%nbasis
+    allocate(ref(num,num), calc(num,num), v(num,num))
+
+    ! -- s matrix --
+    call Nshel_s(nshel, calc); check_err()
+    call open_r(ifile, "../gms/hcp/out/s.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
+    close(ifile)
+
+    ! -- t matrix --
+    call Nshel_t(nshel, calc); check_err()
+    call open_r(ifile, "../gms/hcp/out/t.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
+
+    ! -- h matrix --
+    call Nshel_v(nshel, v); check_err()
+    call Nshel_t(nshel, calc); check_err()
+    calc(:,:) = calc(:,:) + v(:,:)
+    call open_r(ifile, "../gms/hcp/out/h.csv"); check_err()    
+    call load_dmat(ifile, ref); check_err()    
+    call expect_near_dmat(ref, calc, 10.0d0**(-7))
+    
+    ! -- delete --
+    call Nshel_delete(nshel); check_err()
+    deallocate(calc, ref)
+    close(ifile)
+
+    write(*,*) "TestNshel_hcp end"
+    write(*,*) "--------------------"    
+    
+  end subroutine test_hcp
 end module Mod_TestNshel
 
 program main

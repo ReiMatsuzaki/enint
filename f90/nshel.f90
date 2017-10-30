@@ -273,8 +273,6 @@ contains
     integer, intent(in) :: ia
     integer it, num, j, jj
 
-    write(*,*) "in Nshel.set", ng, size(zeta), size(coef_l(0,:))
-
     num = 0
     do it = 1, size(ntypes)
        if(ntypes(it) == "s") then
@@ -583,14 +581,29 @@ contains
     
   end subroutine coef_d
   recursive function mole_gammainc1(m, z) result(res)
+    ! compute incompute gamma function 
+    !        F_m(z) = Int_0^1 t^{2m} Exp[-zt^2] dt
+    ! implemented function P in gsl is defined as
+    !        P(a,x) = 1/Gamma(a) . Int_0^x t^{a-1}t^{-t} dt
+    use fgsl
     integer, intent(in) :: m
     double precision, intent(in) :: z
     double precision :: res
+    double precision :: a
+    real(fgsl_double) :: ga, giaz
+    double precision, parameter :: eps=10.0d-14
 
-    if(m==0) then
-       res = gamma(0.5d0)/(2*z**0.5d0) * gammainc(0.5d0, z)
-    else
+    if(abs(z)<eps) then
+       res = 1/(2*m+1.0d0)
+       return
     end if
+
+    a = m+0.5d0
+    ga = fgsl_sf_gamma(a)
+    giaz = fgsl_sf_gamma_inc_P(a, z)
+    res = ga/(2*z**a) * giaz
+    return
+
   end function mole_gammainc1
   subroutine mole_gammainc(maxm, z, res)
     integer, intent(in) :: maxm
@@ -604,15 +617,26 @@ contains
   recursive function coef_R1(zp,wp,wc,n,j) result(res)
     double precision :: zp, wp(3), wc(3)
     integer, intent(in) :: n(3), j
-    double precision :: res, wpc(3), d2, Fj(0:10)
+    double precision :: res, wpc(3), d2, Fj
+    integer :: id_i(3), i
 
+    res = 0
     wpc(:) = wp(:)-wc(:)
-
-    call mole_gammainc(j,zp*d2, Fj); check_err()
-    
+    d2 = dot_product(wpc, wpc)
+        
     if(all(n==0)) then
-       d2 = dot_product(wpc, wpc)
-       res = (-2*zp)**j * Fj(0)
+       Fj = mole_gammainc1(j,zp*d2)
+       res = (-2*zp)**j * Fj
+    else
+       do i = 1, 3
+          id_i(:) = 0; id_i(i) = 1
+          if(n(i)>0) then
+             res = wpc(i) * coef_R1(zp,wp,wc,n(:)-id_i(:),j+1)
+             if(n(i)>1) then
+                res = res + (n(i)-1) * coef_R1(zp,wp,wc,n(:)-2*id_i(:),j+1)
+             end if
+          end if
+       end do
     end if
     
   end function coef_R1

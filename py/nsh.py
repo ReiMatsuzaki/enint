@@ -149,6 +149,8 @@ def coef_d_list(zp,wp,wa,wb,mna,mnb):
     return ds
 
 def coef_R_list(zp,wp,wc,maxn,n):
+    wp = np.array(wp)
+    wc = np.array(wc)
     rs = [[[coef_R(zp, wp, wc, [nx,ny,nz], n)
              for nz in range(maxn+1)]
             for ny in range(maxn+1)]
