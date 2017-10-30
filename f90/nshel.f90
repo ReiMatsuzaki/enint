@@ -619,15 +619,49 @@ contains
     return
 
   end function mole_gammainc1
-  subroutine mole_gammainc(maxm, z, res)
+  subroutine mole_gammainc(maxm, z, res, in_method)
     integer, intent(in) :: maxm
     double precision, intent(in) :: z
     double precision :: res(0:)
-    integer m
-    do m = 0, maxm
-       res(m) = mole_gammainc1(m, z)
-    end do
+    integer, intent(in), optional :: in_method
+    integer m, method
+
+    if(present(in_method)) then
+       method = in_method
+    else
+       method = 0
+    end if
+
+    if(method == 0) then
+       do m = 0, maxm
+          res(m) = mole_gammainc1(m, z)
+       end do
+    else
+       call mole_gammainc_fast(maxm, z, res); check_err()
+    end if
   end subroutine mole_gammainc
+  subroutine mole_gammainc_fast(maxm, z, res)
+    use Mod_const, only : pi
+    integer, intent(in) :: maxm
+    double precision, intent(in) :: z
+    double precision, intent(out) :: res(0:)
+    integer m
+
+    if(abs(z)<1.0d-4) then
+       do m = 0, maxm
+          res(m) = 1/(2*m+1.0d0) &
+               - z/(2*m+3) &
+               + (z**2)/(2*(2*m+5)) &
+               - (z**3)/(3*(2*m+7))
+       end do
+    else
+       res(0) = sqrt(pi/z)/2 * erf(sqrt(z))
+       do m = 1, maxm
+          res(m) = -exp(-z)/(2*z) + (2*m-1)/(2*z) * res(m-1)
+       end do
+    end if
+    
+  end subroutine mole_gammainc_fast
   recursive function coef_R1(zp,wp,wc,n,j) result(res)
     double precision :: zp, wp(3), wc(3)
     integer, intent(in) :: n(3), j
@@ -683,17 +717,20 @@ contains
              end do
           end do
        end do
-    else
-       call coef_R_fast(zp,wp,wc,maxn, cr); check_err()              
+    else if(method.eq.1) then
+       call coef_R_fast(zp,wp,wc,maxn,0, cr); check_err()
+    else if(method.eq.2) then
+       call coef_R_fast(zp,wp,wc,maxn,1, cr); check_err()     
     end if
  !   call Timer_end("coef_R")
     
   end subroutine coef_R
-  subroutine coef_R_fast(zp,wp,wc,maxn, cr)
+  subroutine coef_R_fast(zp,wp,wc,maxn, m_gamma, cr)
     double precision, intent(in) :: zp
     double precision, intent(in) :: wp(3)
     double precision, intent(in) :: wc(3)
     integer, intent(in) :: maxn
+    integer, intent(in) :: m_gamma
     double precision, intent(out) :: cr(0:,0:,0:)
     double precision, allocatable :: Fj(:)
     double precision, allocatable :: rmap(:,:,:,:)
@@ -707,7 +744,7 @@ contains
     allocate(Fj(0:maxn*3))
     allocate(rmap(0:maxn,0:maxn,0:maxn,0:3*maxn))
 
-    call mole_gammainc(3*maxn, zp*d2, Fj(:))
+    call mole_gammainc(3*maxn, zp*d2, Fj(:), m_gamma); check_err()
 
     tmp = 1
     do j = 0, 3*maxn
