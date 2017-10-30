@@ -772,6 +772,9 @@ class Nshel:
                                     for nx in range(nj[0]+nk[0]+1):
                                         for ny in range(nj[1]+nk[1]+1):
                                             for nz in range(nj[2]+nk[2]+1):
+                                                if(sj.j0+jj==0 and
+                                                   sk.j0 + kk==3):
+                                                    print rs[nx,ny,nz],nucs.zs[ic],ds[0,nj[0],nk[0],nx],ds[1,nj[1],nk[1],ny],ds[2,nj[2],nk[2],nz]
                                                 acc += (ds[0,nj[0],nk[0],nx]*
                                                         ds[1,nj[1],nk[1],ny]*
                                                         ds[2,nj[2],nk[2],nz]*
@@ -780,6 +783,8 @@ class Nshel:
                                     coef = cp * sj.coef[jj,jg] * sk.coef[kk,kg]
                                     j = sj.j0 + jj
                                     k = sk.j0 + kk
+                                    if(j==0 and k==3):
+                                        print jg+1,kg+1,ic+1,acc,coef
                                     mat[j,k] += acc*coef
         return mat                
             

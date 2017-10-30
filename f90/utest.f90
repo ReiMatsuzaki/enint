@@ -1,11 +1,77 @@
 #include "macros.fpp"
 
+module mod_Utest
+  use Mod_Timer
+  use Mod_ErrHandle
+  implicit none  
+!  private
+  integer, save, private :: num_utest
+  integer, save, private :: num_failed
+  character(10) :: sub_title_
+!  public:: utest_check_eq, utest_check_near  
+contains 
+  ! ==== constructors ==== 
+  subroutine utest_new
+    
+    num_utest = 0
+    num_failed = 0
+    write(*,'("[=========] ", A)') "Unite test begin"
+
+    call Timer_new("utest", .false.); check_err()
+    
+  end subroutine utest_new
+  subroutine utest_delete
+    write(*,'("[=========] ", A)') "Unite test end"
+    write(*,'("[ PASSED  ] ", i5)') num_utest-num_failed
+    write(*,'("[ FAILED  ] ", i5)') num_failed
+    call  Timer_delete()
+
+  end subroutine utest_delete
+
+  ! ==== utils ====
+  subroutine Utest_sub_begin(title)
+    character(*), intent(in) :: title
+    if(title.eq."") then
+       throw_err("title can not empty", 1)
+    end if
+
+    call Timer_begin(title); check_err()
+    sub_title_ = title
+    write(*,'("[ RUN     ] ", A)') trim(title)
+    
+  end subroutine Utest_sub_begin
+  subroutine Utest_sub_end()
+    double precision t
+    call Timer_end(sub_title_)
+    t = Timer_time(sub_title_)
+    if(get_err().eq.0) then
+       write(*,'("[      OK ] ", A, "  (", f10.5, " ms)")') sub_title_, t*1000
+    else
+       write(*,'("[ FAILED  ] ", A, "  (", f10.5, " ms)")') sub_title_, t*1000
+    end if
+  end subroutine Utest_sub_end
+  subroutine utest_check_begin
+    num_utest = num_utest + 1
+  end subroutine utest_check_begin
+  subroutine utest_check_fail(msg, file, line)
+    character(*) msg, file
+    integer line
+    num_failed = num_failed + 1
+    write(*, '(a, ":", i0, ": ", a)') file, line, msg
+    return
+  end subroutine utest_check_fail
+  
+end module mod_Utest
+
+
 !     Unit test utilities
 
 !
 ! TODO
 ! more pretty message !
 module Mod_UtestCheck
+  use Mod_Utest
+  use Mod_ErrHandle
   implicit none
   interface utest_check_near
      subroutine check_near_d(a, b, eps, a_str, b_str, file, line, stopq)
@@ -89,9 +155,7 @@ module Mod_UtestCheck
      end subroutine check_eq_s_0
   end interface utest_check_eq_0
 contains
-  subroutine expect_near_dmat(a, b, eps)
-    use Mod_Utest
-    use Mod_ErrHandle
+  subroutine expect_near_dmat(a, b, eps)    
     double precision, intent(in) :: a(:,:), b(:,:)
     double precision, intent(in) :: eps
     integer i, j
@@ -120,8 +184,6 @@ contains
     
   end subroutine expect_near_dmat
   subroutine expect_not_NaN_d(a)
-    use Mod_Utest
-    use Mod_ErrHandle
     double precision, intent(in) :: a
     call utest_check_begin
     if(.not. (0<a .or. a<1)) then
@@ -131,8 +193,6 @@ contains
     end if
   end subroutine expect_not_NaN_d
   subroutine expect_prop_dmat(a, prop)
-    use Mod_Utest
-    use Mod_ErrHandle
     double precision, intent(in) :: a(:,:)
     character(*),intent(in) :: prop
     integer :: n, m, i, j
@@ -152,8 +212,20 @@ contains
        end do
     end do
     
-    if(prop=="overlap") then
-
+    if(prop=="overlap".or.prop=="hermite") then
+       do i = 1, n
+          do j = 1, i-1
+             if(abs(a(i,j)-a(j,i)) > 1.0d-10) then
+                begin_err(1)
+                write(0,*) "matrix element is not hermitian"
+                write(0,*) "i=", i
+                write(0,*) "j=", j
+                write(0,*) "a(i,j)=", a(i,j)
+                write(0,*) "a(j,i)=", a(j,i)
+                end_err()
+             end if
+          end do
+       end do
     else
        begin_err(2)
        write(0,*) "prop<-overlap"
@@ -161,50 +233,6 @@ contains
     end if
   end subroutine expect_prop_dmat
 end module Mod_UtestCheck
-module mod_Utest
-  implicit none
-!  private
-  integer, save, private :: num_utest
-  integer, save, private :: num_failed
-!  public:: utest_check_eq, utest_check_near  
-contains 
-  ! ==== constructors ====
-  subroutine utest_new
-
-    num_utest = 0
-    num_failed = 0
-    write(*,*) 
-    write(*,*) "=========================="
-    write(*,*) "          UTtest          "
-    write(*,*) "=========================="
-    write(*,*) 
-    
-  end subroutine utest_new
-  subroutine utest_delete
-    write(*,*) "--------------------------"
-    write(*,*) "          Results         "
-    write(*,*) "--------------------------"
-    if(num_failed .eq. 0) then
-       write(*, '(I0, " tests passed")') num_utest
-    else
-       write(*,*) num_failed, num_utest
-    end if
-
-  end subroutine utest_delete
-
-  ! ==== utils ====
-  subroutine utest_check_begin
-    num_utest = num_utest + 1
-  end subroutine utest_check_begin
-  subroutine utest_check_fail(msg, file, line)
-    character(*) msg, file
-    integer line
-    num_failed = num_failed + 1
-    write(*, '(a, ":", i0, ": ", a)') file, line, msg
-    return
-  end subroutine utest_check_fail
-  
-end module mod_Utest
 
 ! ==== main ====
 subroutine check_near_d(a,b,eps,a_str,b_str,file,line,stopq)

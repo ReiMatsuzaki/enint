@@ -180,11 +180,11 @@ contains
     call a2dvec(o%vals(idx)%val_a, coef_l(1,:)); check_err()
     call object_get_idx(o, "cd", idx); check_err()
     call a2dvec(o%vals(idx)%val_a, coef_l(2,:)); check_err()
-
-    ntypes(:) = ""
+    
     do js = 1, num
        k0 = kstart(js)
        k1 = k0+kng(js)-1
+       ntypes(:) = ""
        if(kmin(js)==1 .and. kmax(js)==1) then
           ntypes(1) = "s"
        else if(kmin(js)==1 .and. kmax(js)==4) then
@@ -310,9 +310,9 @@ contains
           this%shels(js)%ns(j+1,:) = (/0,2,0/)
           this%shels(js)%ns(j+2,:) = (/0,0,2/)
           this%shels(js)%ns(j+3,:) = (/1,1,0/)
-          this%shels(js)%ns(j+4,:) = (/0,1,1/)
-          this%shels(js)%ns(j+5,:) = (/1,0,1/)
-          do jj = j, j+2
+          this%shels(js)%ns(j+4,:) = (/1,0,1/)
+          this%shels(js)%ns(j+5,:) = (/0,1,1/)
+          do jj = j, j+5
              this%shels(js)%coef(jj,:) = coef_l(2,1:ng)
           end do
           j = j + 6
@@ -506,7 +506,8 @@ contains
                 wp(:) = (zj*wj(:) + zk*wk(:))/zp
                 ep = exp(-zj*zk/zp*d2)
                 ccp = -2*pi*ep/zp
-                call coef_d(zp,wp,wj,wk,maxnj,maxnk,0, d); check_err()
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk,maxnj+maxnk,d);
+                check_err()
 
                 do ic = 1, this%nucs%num
                    maxn = this%shels(js)%maxn + this%shels(ks)%maxn
@@ -522,6 +523,13 @@ contains
                          do nx = 0, nj(1)+nk(1)
                             do ny = 0, nj(2)+nk(2)
                                do nz = 0, nj(3)+nk(3)
+                                  if(this%j0s(js)+jj.eq.1 .and. &
+                                       this%j0s(ks)+kk.eq.4) then
+                                  !   write(*,'(5i3,5f10.5)')  nx,ny,nz,nj(1),nk(1),cr(nx,ny,nz) ,q, &
+                                   !       d(1,nj(1),nk(1),nx), &
+                                    !      d(2,nj(2),nk(2),ny), &
+                                     !     d(3,nj(3),nk(3),nz)
+                                  end if
                                   acc = acc + cr(nx,ny,nz) * q * &
                                        d(1,nj(1),nk(1),nx) * &
                                        d(2,nj(2),nk(2),ny) * &
@@ -533,6 +541,10 @@ contains
                               * this%shels(ks)%coef(kk,kg)
                          j = this%j0s(js) + jj
                          k = this%j0s(ks) + kk
+                         if(j==1 .and. k==4) then
+                            !write(*,'(7i3,2f10.5)') js,jj, jg, ks,kk, kg ,ic, acc, coef
+                         end if
+  
                          mat(j,k) = mat(j,k) + coef*acc
                       end do
                    end do
@@ -642,6 +654,7 @@ contains
     
   end function coef_R1
   subroutine coef_R(zp,wp,wc,maxn, cr)
+    use Mod_Timer
     double precision, intent(in) :: zp
     double precision, intent(in) :: wp(3)
     double precision, intent(in) :: wc(3)
@@ -649,6 +662,7 @@ contains
     double precision, intent(out) :: cr(0:,0:,0:)
     integer nx, ny, nz, n(3)
 
+    call Timer_begin("coef_R")
     do nx = 0, maxn
        do ny = 0, maxn
           do nz = 0, maxn
@@ -658,6 +672,7 @@ contains
           end do
        end do
     end do
+    call Timer_end("coef_R")
     
   end subroutine coef_R
   ! == utils ==

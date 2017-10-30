@@ -131,7 +131,7 @@ calc = {1}
         #print gtoele(g1, prim_na(c), g0)
             
 class TestMatEle(TestCase):
-    def test_nshel(self):
+    def _test_nshel(self):
 
         nucs = Nucs()
         ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)
@@ -159,7 +159,7 @@ class TestMatEle(TestCase):
         self.assertMatProp("hermite", calc)
         self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")   
 
-    def test_nshel_h2(self):
+    def _test_nshel_h2(self):
         out = "../../gms/h2/out"
         with open(os.path.join(out, "nshel.json")) as f:
             j = json.load(f)
