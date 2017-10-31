@@ -30,13 +30,13 @@ ${BUILD}/utest_nshel: ${OBJS}
 check_nshel: ${BUILD}/utest_nshel
 	${BUILD}/utest_nshel
 
-# ==== Endvr ====
-TARGET=endvr
+# ==== Enint ====
+TARGET=enint
 MODULES=${MODS0} nshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/${TARGET}: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
 check_${TARGET}: ${BUILD}/${TARGET}
-	${BUILD}/${TARGET} ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
+	${BUILD}/${TARGET} na_rs ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
 
 
