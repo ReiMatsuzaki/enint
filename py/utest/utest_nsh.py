@@ -6,6 +6,7 @@ join = os.path.join
 
 import pandas as pd
 
+from enint.nsh0 import *
 from enint.nsh import *
 from enint.math import ijv2mat
 
@@ -57,36 +58,7 @@ b[i,j] = {3}
 """.format(i,j,a[i,j],b[i,j],msg))
 
 class TestNsh(TestCase):
-    def _test_read(self):
-        with open("out/0/out/nshel.json") as f:
-            j = json.load(f)
-            gs = nshel2gto(j)
-            print gtomat(gs, prim_dw(2))
-                        
-    def _test_first(self):
-        g1 = GTO([1.0], [1.0], [0.0,0.0,0.0], [0,0,0], True)
-        g2 = GTO([1.3], [1.0], [0.0,0.0,0.0], [0,0,0], True)
-        gs = [g1, g2]
-        s = gtomat(gs, op_s())
-
-    def _test_s_d(self):
-        """
-        g1 = GTO([18.73,2.83,0.64], [0.215,0.36,0.42],
-        [0.0,0.0,0.0], [0,0,0], True)
-        g2 = GTO([0.2], [1.0],
-        [0.0,0.0,4.0], [2,0,0], True)
-        print g2
-        """
-        g1 = GTO([1.1], [1.0],
-                 [0.0,0.0,0.0], [1,0,0], True)
-        g2 = GTO([0.2], [1.0],
-                 [0.0,0.0,4.0], [1,0,1], True)
-        #print g1
-        #print g2
-        #print gtomat([g1,g2], prim_s)
-        #print gtoele(g1, prim_s, g2)
-
-    def _test_dz(self):
+    def test_dz(self):
         
         g1 = GTO([1.5, 0.3], [1.0, 0.8], [0.0,0.0,0.0], [2,0,0], True)
     
@@ -120,18 +92,8 @@ ref = {0}
 calc = {1}
 |ref-calc| = {4}
 (m,z) = ({2},{3})""".format(ref,calc,m,z,abs(ref-calc)))
-        
-    def _test_na(self):
-        r0 = [0.0,0.0,0.0]
-        g0 = GTO([1.2],      [1.0],      r0, [0,0,0], True)
-        g1 = GTO([1.5, 0.3], [1.0, 0.8], r0, [2,0,0], True)
-
-        c = np.array([1.0,0.0,0.0])
-        #print "na:"
-        #print gtoele(g1, prim_na(c), g0)
-            
-class TestMatEle(TestCase):
-    def _test_nshel(self):
+                    
+    def test_nshel(self):
 
         nucs = Nucs()
         ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)
@@ -159,7 +121,7 @@ class TestMatEle(TestCase):
         self.assertMatProp("hermite", calc)
         self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")   
 
-    def _test_nshel_h2(self):
+    def test_nshel_h2(self):
         out = "../../gms/h2/out"
         with open(os.path.join(out, "nshel.json")) as f:
             j = json.load(f)
@@ -188,22 +150,22 @@ class TestMatEle(TestCase):
             j = json.load(f)
             nshel = nshel_load(j)
             nshel.setup(True)
-            gs = nshel2gto(j, True)
+
 
         calc = nshel.smat()
-        self.assertMatProp("overlap", calc)
+#        self.assertMatProp("overlap", calc)
         df = pd.read_csv(join(out, "s.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc)
 
         calc = nshel.tmat()
-        self.assertMatProp("hermite", calc)
+#        self.assertMatProp("hermite", calc)
         df = pd.read_csv(join(out, "t.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc)
 
         calc = nshel.tmat() + nshel.vmat()
-        self.assertMatProp("hermite", calc)
+#        self.assertMatProp("hermite", calc)
         df = pd.read_csv(join(out, "h.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_neshl_gms. H core")        
