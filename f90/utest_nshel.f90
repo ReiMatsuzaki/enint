@@ -127,9 +127,12 @@ contains
     ! [[ 0.13558003  0.0352501 ]
     !  [ 0.0352501   0.0109848 ]]]
     double precision :: cr(0:1,0:1,0:1)
+    double precision :: wp(3), wc(3), wpc(3)
 
-    call coef_R(1.1d0, (/0.0d0,0.1d0,0.2d0/), &
-         (/0.2d0,0.3d0,0.4d0/),1, cr)
+    wp(:) = (/0.0d0,0.1d0,0.2d0/)
+    wc(:) = (/0.2d0,0.3d0,0.4d0/)
+    wpc(:) = wp(:)-wc(:)
+    call coef_R(1.1d0, wpc(:), 1, cr)
 
     call expect_eq(0.95768901d0, cr(0,0,0))
     call expect_eq(0.0352501d0, cr(1,1,0))
@@ -138,14 +141,15 @@ contains
   end subroutine test_coef_r
   subroutine test_coef_r_fast()
     double precision :: cr0(0:3,0:3,0:3), cr1(0:3,0:3,0:3)
-    double precision :: zp, wp(3), wc(3)
+    double precision :: zp, wp(3), wc(3), wpc(3)
     integer :: x,y,z
 
     zp = 1.1d0
     wp(:) = (/0.0d0,0.1d0,0.2d0/)
     wc(:) = (/0.3d0,0.0d0,0.1d0/)
-    call coef_R(zp, wp, wc, 3, cr0, 0); check_err()
-    call coef_R(zp, wp, wc, 3, cr1, 1); check_err()
+    wpc(:) = wp(:)-wc(:)
+    call coef_R(zp, wpc, 3, cr0, 0); check_err()
+    call coef_R(zp, wpc, 3, cr1, 1); check_err()
 
     do x = 0, 3
        do y = 0, 3

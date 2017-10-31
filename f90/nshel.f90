@@ -483,7 +483,7 @@ contains
     double precision :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ic, maxn
     integer nx, ny, nz
-    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wc(3), ep, ccp, q
+    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wpc(3), ep, ccp, q
     double precision :: d(3,0:5,0:5,0:10), acc, coef, cr(0:10,0:10,0:10)
 
     mat = 0
@@ -508,10 +508,9 @@ contains
 
                 do ic = 1, this%nucs%num
                    maxn = this%shels(js)%maxn + this%shels(ks)%maxn
-                   wc(:) = this%nucs%ws(ic,:)
+                   wpc(:) = wp(:)-this%nucs%ws(ic,:)
                    q = this%nucs%zs(ic)
-                   !call coef_R(zp,wp,wc,maxn, cr); check_err()
-                   call coef_R(zp,wp,wc,maxn, cr, 1); check_err()
+                   call coef_R(zp,wpc,maxn, cr, 1); check_err()
                    do jj = 1, this%shels(js)%num
                       do kk = 1, this%shels(ks)%num                      
                          nj(:) = this%shels(js)%ns(jj,:)
@@ -521,13 +520,13 @@ contains
                          do nx = 0, nj(1)+nk(1)
                             do ny = 0, nj(2)+nk(2)
                                do nz = 0, nj(3)+nk(3)
-                                  if(this%j0s(js)+jj.eq.1 .and. &
-                                       this%j0s(ks)+kk.eq.4) then
+!                                  if(this%j0s(js)+jj.eq.1 .and. &
+!                                       this%j0s(ks)+kk.eq.4) then
                                   !   write(*,'(5i3,5f10.5)')  nx,ny,nz,nj(1),nk(1),cr(nx,ny,nz) ,q, &
                                    !       d(1,nj(1),nk(1),nx), &
                                     !      d(2,nj(2),nk(2),ny), &
                                      !     d(3,nj(3),nk(3),nz)
-                                  end if
+!                                  end if
                                   acc = acc + cr(nx,ny,nz) * q * &
                                        d(1,nj(1),nk(1),nx) * &
                                        d(2,nj(2),nk(2),ny) * &
@@ -659,14 +658,13 @@ contains
     end if
     
   end subroutine mole_gammainc_fast
-  recursive function coef_R1(zp,wp,wc,n,j) result(res)
-    double precision :: zp, wp(3), wc(3)
+  recursive function coef_R1(zp,wpc,n,j) result(res)
+    double precision :: zp, wpc(3)
     integer, intent(in) :: n(3), j
-    double precision :: res, wpc(3), d2, Fj
+    double precision :: res, d2, Fj
     integer :: id_i(3), i
 
     res = 0
-    wpc(:) = wp(:)-wc(:)
     d2 = dot_product(wpc, wpc)
         
     if(all(n==0)) then
@@ -676,20 +674,19 @@ contains
        do i = 1, 3
           id_i(:) = 0; id_i(i) = 1
           if(n(i)>0) then
-             res = wpc(i) * coef_R1(zp,wp,wc,n(:)-id_i(:),j+1)
+             res = wpc(i) * coef_R1(zp,wpc,n(:)-id_i(:),j+1)
              if(n(i)>1) then
-                res = res + (n(i)-1) * coef_R1(zp,wp,wc,n(:)-2*id_i(:),j+1)
+                res = res + (n(i)-1) * coef_R1(zp,wpc,n(:)-2*id_i(:),j+1)
              end if
           end if
        end do
     end if
     
   end function coef_R1
-  subroutine coef_R(zp,wp,wc,maxn, cr, in_method)
+  subroutine coef_R(zp,wpc,maxn, cr, in_method)
     use Mod_Timer
     double precision, intent(in) :: zp
-    double precision, intent(in) :: wp(3)
-    double precision, intent(in) :: wc(3)
+    double precision, intent(in) :: wpc(3)
     integer, intent(in) :: maxn
     double precision, intent(out) :: cr(0:,0:,0:)
     integer, intent(in), optional :: in_method
@@ -709,33 +706,31 @@ contains
           do ny = 0, maxn
              do nz = 0, maxn
                 n(1) = nx; n(2) = ny; n(3) = nz
-                cr(nx,ny,nz) = coef_R1(zp,wp,wc,n,0)
+                cr(nx,ny,nz) = coef_R1(zp,wpc,n,0)
                 check_err()
              end do
           end do
        end do
     else if(method.eq.1) then
-       call coef_R_fast(zp,wp,wc,maxn,0, cr); check_err()
+       call coef_R_fast(zp,wpc,maxn,0, cr); check_err()
     else if(method.eq.2) then
-       call coef_R_fast(zp,wp,wc,maxn,1, cr); check_err()     
+       call coef_R_fast(zp,wpc,maxn,1, cr); check_err()     
     end if
  !   call Timer_end("coef_R")
     
   end subroutine coef_R
-  subroutine coef_R_fast(zp,wp,wc,maxn, m_gamma, cr)
+  subroutine coef_R_fast(zp,wpc,maxn, m_gamma, cr)
     double precision, intent(in) :: zp
-    double precision, intent(in) :: wp(3)
-    double precision, intent(in) :: wc(3)
+    double precision, intent(in) :: wpc(3)
     integer, intent(in) :: maxn
     integer, intent(in) :: m_gamma
     double precision, intent(out) :: cr(0:,0:,0:)
     double precision, allocatable :: Fj(:)
     double precision, allocatable :: rmap(:,:,:,:)
-    double precision :: wpc(3), d2, tmp
+    double precision :: d2, tmp
     integer j, nnn, nx, ny, nz
     
     cr(:,:,:) = 0
-    wpc(:) = wp(:)-wc(:)
     d2 = dot_product(wpc, wpc)
 
     allocate(Fj(0:maxn*3))
@@ -747,15 +742,6 @@ contains
     do j = 0, 3*maxn
        rmap(0,0,0,j) = tmp * Fj(j)
        tmp = tmp*(-2*zp)
-    end do
-    !do j = 0, 3*maxn
-    !   rmap(0,0,0,j) = (-2*zp)**j * Fj(j)
-    !end do
-
-    do j = 0, 3*maxn-1
-       rmap(1,0,0,j) = wpc(1) * rmap(0,0,0,j+1)
-       rmap(0,1,0,j) = wpc(2) * rmap(0,0,0,j+1)
-       rmap(0,0,1,j) = wpc(3) * rmap(0,0,0,j+1)
     end do
 
     do nnn = 1, 3*maxn

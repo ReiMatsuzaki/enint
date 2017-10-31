@@ -152,13 +152,6 @@ def coef_R_list_fast(zp,wpc,maxn):
         rmap[0,0,0,j] = tmp * mole_gammainc(j,zwpc)
         tmp *= (-2*zp)
 
-    """
-    for j in range(3*maxn):
-        rmap[1,0,0,j] = wpc[0] * rmap[0,0,0,j+1]
-        rmap[0,1,0,j] = wpc[1] * rmap[0,0,0,j+1]
-        rmap[0,0,1,j] = wpc[2] * rmap[0,0,0,j+1]
-    """
-
     for nnn in range(1,3*maxn+1):
         for nx in range(min(maxn, nnn)+1):
             for ny in range(min(maxn,nnn-nx)+1):
@@ -168,15 +161,17 @@ def coef_R_list_fast(zp,wpc,maxn):
                             tmp = wpc[0]*rmap[nx-1,ny,nz,j+1]
                             if(nx>1):
                                 tmp += (nx-1)*rmap[nx-2,ny,nz,j+1]
+                            rmap[nx,ny,nz,j] = tmp
                         elif(ny>0):
                             tmp = wpc[1]*rmap[nx,ny-1,nz,j+1]
                             if(ny>1):
                                 tmp += (ny-1)*rmap[nx,ny-2,nz,j+1]
+                            rmap[nx,ny,nz,j] = tmp
                         elif(nz>0):
                             tmp = wpc[2]*rmap[nx,ny,nz-1,j+1]
                             if(nz>1):
                                 tmp += (nz-1)*rmap[nx,ny,nz-2,j+1]
-                        rmap[nx,ny,nz,j] = tmp
+                            rmap[nx,ny,nz,j] = tmp
     return rmap[:,:,:,0]
                         
 def dist2(xs):

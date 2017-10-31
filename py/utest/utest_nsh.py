@@ -93,6 +93,21 @@ calc = {1}
 |ref-calc| = {4}
 (m,z) = ({2},{3})""".format(ref,calc,m,z,abs(ref-calc)))
                     
+    def test_coef_R(self):
+        wp = np.array([0.0, 0.1, 0.2])
+        wc = np.array([0.2, 0.3, 0.4])
+        wpc = wp-wc
+        
+        rs = coef_R_list(1.1, wpc, 1, 0,   0)
+        self.assertAlmostEqual(0.95768901, rs[0,0,0])
+        self.assertAlmostEqual(0.0352501,  rs[1,1,0])
+        self.assertAlmostEqual(0.0352501,  rs[0,1,1])
+
+        rs = coef_R_list(1.1, wpc, 1, 0,   1)
+        self.assertAlmostEqual(0.95768901, rs[0,0,0])
+        self.assertAlmostEqual(0.0352501,  rs[1,1,0])
+        self.assertAlmostEqual(0.0352501,  rs[0,1,1])
+        
     def test_nshel(self):
 
         nucs = Nucs()
