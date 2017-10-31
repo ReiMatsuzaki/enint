@@ -69,15 +69,15 @@ def coef_d(zp,wpk,wak,wbk,nak,nbk,nk):
                 (wpk-wbk)* coef_d(zp,wpk,wak,wbk,nak,nbk-1,nk)   +
                 (nk+1.0) * coef_d(zp,wpk,wak,wbk,nak,nbk-1,nk+1)   )
 
-def coef_R(zp,wp,c,m,j):
+def coef_R(zp,wpc,m,j):
     """
     Compute function R_{m,j}(zp,w,c). See T.Kuchitsu, J.Okuda and M.Tachikawa, Int.J.Q.Chem. 109, 540 (2008)
 
     Inputs
     -------
     zp: float
-    wp: [float]*3
-    c : [float]*3
+    wcp: [float]*3 
+    .    vector Wp-Wc 
     m : [int]*3
     j : int
 
@@ -86,11 +86,9 @@ def coef_R(zp,wp,c,m,j):
     R_{m,j}(zp,w,c) : float
     """
 
-    wc = wp-c
-
     if(m[0]==0 and m[1]==0 and m[2]==0):
         try:
-            return (-2*zp)**j * mole_gammainc(j,zp*dist2(wc))
+            return (-2*zp)**j * mole_gammainc(j,zp*dist2(wpc))
         except RuntimeError as e:
             raise RuntimeError("""
 failed at mole_gammainc. 
@@ -106,9 +104,9 @@ Below are errror message from mole_grammainc
     for i in range(3):
         im = np.zeros(3); im[i] = 1
         if(m[i]>0):
-            res = wc[i] * coef_R(zp,wp,c,m-im,j+1)
+            res = wpc[i] * coef_R(zp,wpc,m-im,j+1)
             if(m[i]>1):
-                res += (m[i]-1) * coef_R(zp,wp,c,m-2*im,j+1)
+                res += (m[i]-1) * coef_R(zp,wpc,m-2*im,j+1)
             return res
 
     raise RuntimeError("one of m is negative integer")
@@ -131,16 +129,56 @@ def coef_d_list(zp,wp,wa,wb,mna,mnb):
     ds = np.array(ds)
     return ds
 
-def coef_R_list(zp,wp,wc,maxn,n):
-    wp = np.array(wp)
-    wc = np.array(wc)
-    rs = [[[coef_R(zp, wp, wc, [nx,ny,nz], n)
-             for nz in range(maxn+1)]
-            for ny in range(maxn+1)]
-           for nx in range(maxn+1)]
-    rs = np.array(rs)
-    return rs
-    
+def coef_R_list(zp,wpc,maxn,n, method=1):
+    if(method==0):
+        rs = [[[coef_R(zp, wpc, [nx,ny,nz], n)
+                for nz in range(maxn+1)]
+               for ny in range(maxn+1)]
+              for nx in range(maxn+1)]
+        rs = np.array(rs)
+        return rs
+    elif(method==1):
+        return coef_R_list_fast(zp,wpc,maxn)
+    else:
+        raise RuntimeError("not impl")
+
+def coef_R_list_fast(zp,wpc,maxn):
+
+    rmap = np.zeros((maxn+1,maxn+1,maxn+1,3*maxn+1))
+    zwpc = zp*dist2(wpc)
+
+    tmp = 1
+    for j in range(3*maxn+1):
+        rmap[0,0,0,j] = tmp * mole_gammainc(j,zwpc)
+        tmp *= (-2*zp)
+
+    """
+    for j in range(3*maxn):
+        rmap[1,0,0,j] = wpc[0] * rmap[0,0,0,j+1]
+        rmap[0,1,0,j] = wpc[1] * rmap[0,0,0,j+1]
+        rmap[0,0,1,j] = wpc[2] * rmap[0,0,0,j+1]
+    """
+
+    for nnn in range(1,3*maxn+1):
+        for nx in range(min(maxn, nnn)+1):
+            for ny in range(min(maxn,nnn-nx)+1):
+                for nz in range(min(maxn,nnn-nx-ny)+1):
+                    for j in range(3*maxn-nnn+1):
+                        if(nx>0):
+                            tmp = wpc[0]*rmap[nx-1,ny,nz,j+1]
+                            if(nx>1):
+                                tmp += (nx-1)*rmap[nx-2,ny,nz,j+1]
+                        elif(ny>0):
+                            tmp = wpc[1]*rmap[nx,ny-1,nz,j+1]
+                            if(ny>1):
+                                tmp += (ny-1)*rmap[nx,ny-2,nz,j+1]
+                        elif(nz>0):
+                            tmp = wpc[2]*rmap[nx,ny,nz-1,j+1]
+                            if(nz>1):
+                                tmp += (nz-1)*rmap[nx,ny,nz-2,j+1]
+                        rmap[nx,ny,nz,j] = tmp
+    return rmap[:,:,:,0]
+                        
 def dist2(xs):
     acc = 0
     for x in xs:

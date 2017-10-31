@@ -216,7 +216,8 @@ class Nshel:
                         
                         for ic in range(nucs.num):
                             nmax = sj.max_n+sk.max_n
-                            rs = coef_R_list(zp,wp,nucs.ws[ic],nmax,0)
+                            wpc = wp-nucs.ws[ic]
+                            rs = coef_R_list(zp,wpc,nmax,0)
                               
                             for jj in range(sj.num):
                                 for kk in range(sk.num):

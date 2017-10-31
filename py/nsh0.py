@@ -64,6 +64,7 @@ def prim_na(wc):
         d2p = dist2(d)
         d2  = dist2(wa-wb)
         ep  = np.exp(-za*zb*d2/zp)
+        wpc = np.array(wp)-np.array(wc)
 
         res = 0
         ns = np.zeros(3, dtype=int)
@@ -74,7 +75,7 @@ def prim_na(wc):
                 for nz in range(na[2]+nb[2]+1):
                     ns[0]=nx; ns[1]=ny; ns[2]=nz; 
                     cz = coef_d(zp,wp[2],wa[2],wb[2],na[2],nb[2],nz)
-                    cr = coef_R(zp,wp,wc,ns,0)
+                    cr = coef_R(zp,wpc,ns,0)
                     res += cx*cy*cz*cr
         return -2*np.pi*ep*res/zp
     return __func__
