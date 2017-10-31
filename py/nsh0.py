@@ -30,7 +30,7 @@ def prim_s(na, wa, za, nb, wb, zb):
     ep = np.exp(-za*zb/zp*d2)
     c = 1    
     for i in range(3):
-        cd = coef_d(zp,wp[i],wa[i],wb[i],na[i],nb[i],0)
+        cd = coef_d1(zp,wp[i],wa[i],wb[i],na[i],nb[i],0)
         c = c * cd
     return ep * (np.sqrt(np.pi/zp))**3 * c
 
@@ -69,13 +69,13 @@ def prim_na(wc):
         res = 0
         ns = np.zeros(3, dtype=int)
         for nx in range(na[0]+nb[0]+1):
-            cx = coef_d(zp,wp[0],wa[0],wb[0],na[0],nb[0],nx)
+            cx = coef_d1(zp,wp[0],wa[0],wb[0],na[0],nb[0],nx)
             for ny in range(na[1]+nb[1]+1):
-                cy = coef_d(zp,wp[1],wa[1],wb[1],na[1],nb[1],ny)
+                cy = coef_d1(zp,wp[1],wa[1],wb[1],na[1],nb[1],ny)
                 for nz in range(na[2]+nb[2]+1):
                     ns[0]=nx; ns[1]=ny; ns[2]=nz; 
-                    cz = coef_d(zp,wp[2],wa[2],wb[2],na[2],nb[2],nz)
-                    cr = coef_R(zp,wpc,ns,0)
+                    cz = coef_d1(zp,wp[2],wa[2],wb[2],na[2],nb[2],nz)
+                    cr = coef_R1(zp,wpc,ns,0)
                     res += cx*cy*cz*cr
         return -2*np.pi*ep*res/zp
     return __func__

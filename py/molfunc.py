@@ -55,21 +55,21 @@ def mole_gammainc(m, z):
         """.format(m,z,res))
     return res
     
-def coef_d(zp,wpk,wak,wbk,nak,nbk,nk):
+def coef_d1(zp,wpk,wak,wbk,nak,nbk,nk):
     if(nak==0 and nbk ==0 and nk ==0):
         return 1.0
     if(nk<0 or nk>nak+nbk):
         return 0.0
     if(nak>0):
-        return (1/(2*zp) * coef_d(zp,wpk,wak,wbk,nak-1,nbk,nk-1) +
-                (wpk-wak)* coef_d(zp,wpk,wak,wbk,nak-1,nbk,nk)   +
-                (nk+1.0) * coef_d(zp,wpk,wak,wbk,nak-1,nbk,nk+1)   )
+        return (1/(2*zp) * coef_d1(zp,wpk,wak,wbk,nak-1,nbk,nk-1) +
+                (wpk-wak)* coef_d1(zp,wpk,wak,wbk,nak-1,nbk,nk)   +
+                (nk+1.0) * coef_d1(zp,wpk,wak,wbk,nak-1,nbk,nk+1)   )
     else:
-        return (1/(2*zp) * coef_d(zp,wpk,wak,wbk,nak,nbk-1,nk-1) +
-                (wpk-wbk)* coef_d(zp,wpk,wak,wbk,nak,nbk-1,nk)   +
-                (nk+1.0) * coef_d(zp,wpk,wak,wbk,nak,nbk-1,nk+1)   )
+        return (1/(2*zp) * coef_d1(zp,wpk,wak,wbk,nak,nbk-1,nk-1) +
+                (wpk-wbk)* coef_d1(zp,wpk,wak,wbk,nak,nbk-1,nk)   +
+                (nk+1.0) * coef_d1(zp,wpk,wak,wbk,nak,nbk-1,nk+1)   )
 
-def coef_R(zp,wpc,m,j):
+def coef_R1(zp,wpc,m,j):
     """
     Compute function R_{m,j}(zp,w,c). See T.Kuchitsu, J.Okuda and M.Tachikawa, Int.J.Q.Chem. 109, 540 (2008)
 
@@ -104,45 +104,37 @@ Below are errror message from mole_grammainc
     for i in range(3):
         im = np.zeros(3); im[i] = 1
         if(m[i]>0):
-            res = wpc[i] * coef_R(zp,wpc,m-im,j+1)
+            res = wpc[i] * coef_R1(zp,wpc,m-im,j+1)
             if(m[i]>1):
-                res += (m[i]-1) * coef_R(zp,wpc,m-2*im,j+1)
+                res += (m[i]-1) * coef_R1(zp,wpc,m-2*im,j+1)
             return res
 
     raise RuntimeError("one of m is negative integer")
         
 
-def coef_d_list(zp,wp,wa,wb,mna,mnb):
-    """
-    ds = np.zeros((3,ma+1,mb+1,ma+mb+2))
-    for i in range(3):
-        for na in range(ma+1):
-            for nb in range(mb+1):
-                for n in range(ma+mb+2):
-                    ds[i,na,nb,n] = coef_d(zp,wp[ir],wa[ir],wb[ir],nj,nk,n)
-    """
-    ds = [[[[coef_d(zp,wp[ir],wa[ir],wb[ir],nj,nk,n)
-             for n in range(mna+mnb+2)]
+def coef_d(zp,wp,wa,wb,mna,mnb,maxn):
+    ds = [[[[coef_d1(zp,wp[ir],wa[ir],wb[ir],nj,nk,n)
+             for n in range(maxn+1)]
             for nk in range(mnb+1)]
            for nj in range(mna+1)]
           for ir in range(3)]
     ds = np.array(ds)
     return ds
 
-def coef_R_list(zp,wpc,maxn,n, method=1):
+def coef_R(zp,wpc,maxn, method=1):
     if(method==0):
-        rs = [[[coef_R(zp, wpc, [nx,ny,nz], n)
+        rs = [[[coef_R1(zp, wpc, [nx,ny,nz], 0)
                 for nz in range(maxn+1)]
                for ny in range(maxn+1)]
               for nx in range(maxn+1)]
         rs = np.array(rs)
         return rs
     elif(method==1):
-        return coef_R_list_fast(zp,wpc,maxn)
+        return coef_R_fast(zp,wpc,maxn)
     else:
         raise RuntimeError("not impl")
 
-def coef_R_list_fast(zp,wpc,maxn):
+def coef_R_fast(zp,wpc,maxn):
 
     rmap = np.zeros((maxn+1,maxn+1,maxn+1,3*maxn+1))
     zwpc = zp*dist2(wpc)

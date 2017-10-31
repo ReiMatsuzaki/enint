@@ -98,12 +98,12 @@ calc = {1}
         wc = np.array([0.2, 0.3, 0.4])
         wpc = wp-wc
         
-        rs = coef_R_list(1.1, wpc, 1, 0,   0)
+        rs = coef_R(1.1, wpc, 1, 0)
         self.assertAlmostEqual(0.95768901, rs[0,0,0])
         self.assertAlmostEqual(0.0352501,  rs[1,1,0])
         self.assertAlmostEqual(0.0352501,  rs[0,1,1])
 
-        rs = coef_R_list(1.1, wpc, 1, 0,   1)
+        rs = coef_R(1.1, wpc, 1, 1)
         self.assertAlmostEqual(0.95768901, rs[0,0,0])
         self.assertAlmostEqual(0.0352501,  rs[1,1,0])
         self.assertAlmostEqual(0.0352501,  rs[0,1,1])

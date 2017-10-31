@@ -121,7 +121,7 @@ class Nshel:
                         ep = np.exp(-zj*zk/zp*d2)
                         cp = ep*(np.pi/zp)**(1.5)
 
-                        ds = [ [ [ coef_d(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
+                        ds = [ [ [ coef_d1(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
                                    for nk in range(sk.max_n+1)]
                                  for nj in range(sj.max_n+1)]
                                for ir in range(3)]
@@ -157,10 +157,13 @@ class Nshel:
                         ep = np.exp(-zj*zk/zp*d2)
                         cp = ep*(np.pi/zp)**(1.5)
 
-                        ds = [ [ [ coef_d(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
+                        ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n+2,0)
+                        """
+                        ds = [ [ [ coef_d1(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
                                    for nk in range(sk.max_n+2+1)]
                                  for nj in range(sj.max_n+1)]
                                for ir in range(3)]
+                        """
 
                         for jj in range(sj.num):
                             for kk in range(sk.num):
@@ -169,18 +172,18 @@ class Nshel:
                                 i3 = range(3)
 
                                 acc = 0
-                                s000 = prod([ds[i][nj[i]][nk[i]] for i in i3])
+                                s000 = prod([ds[i,nj[i],nk[i],0] for i in i3])
                                 acc += -2*zk*(2*nk[0]+2*nk[1]+2*nk[2]+3)*s000
                                 
                                 for jr in i3:
                                     nkp = np.copy(nk[:])
                                     nkp[jr] += 2
-                                    s = prod([ds[i][nj[i]][nkp[i]] for i in i3])
+                                    s = prod([ds[i,nj[i],nkp[i],0] for i in i3])
                                     acc += 4*zk*zk*s
                                     if(nk[jr]>1):
                                         nkm = np.copy(nk[:])
                                         nkm[jr] -= 2
-                                        s = prod([ds[i][nj[i]][nkm[i]] for i in i3])
+                                        s = prod([ds[i,nj[i],nkm[i],0] for i in i3])
                                         acc += nk[jr]*(nk[jr]-1)*s
                                         
                                 coef = cp * sj.coef[jj,jg] * sk.coef[kk,kg]
@@ -212,12 +215,12 @@ class Nshel:
                         ep = np.exp(-zj*zk/zp*d2)
                         cp = -2*np.pi*ep/zp
                         
-                        ds = coef_d_list(zp,wp,wj,wk,sj.max_n,sk.max_n)
+                        ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n,sk.max_n+sj.max_n)
                         
                         for ic in range(nucs.num):
                             nmax = sj.max_n+sk.max_n
                             wpc = wp-nucs.ws[ic]
-                            rs = coef_R_list(zp,wpc,nmax,0)
+                            rs = coef_R(zp,wpc,nmax)
                               
                             for jj in range(sj.num):
                                 for kk in range(sk.num):
