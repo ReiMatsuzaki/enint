@@ -184,7 +184,10 @@ calc = {1}
         df = pd.read_csv(join(out, "h.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_neshl_gms. H core")        
-
+        
+class TestCnshel(TestCase):
+    def test_first(self):
+        print coef_d1(1.0-0.1j,0.2,0.3,0.1,1,0,0)
         
 if __name__ == '__main__':
     unittest.main()

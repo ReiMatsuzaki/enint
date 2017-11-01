@@ -1,14 +1,24 @@
 #include "macros.fpp"
 
+#if defined REALGTO
+#define FIELD double precision
+#endif
+#if defined HERMITEGTO
+#define FIELD complex(kind(0d0)) 
+#endif
+#if defined COMPLEXGTO
+#define FIELD complex(kind(0d0)) 
+#endif
+  
 module Mod_Shel
   use Mod_ErrHandle
   implicit none
   type Obj_Shel
-     double precision, allocatable :: zeta(:)
-     double precision, allocatable :: coef(:,:)
+     FIELD, allocatable :: zeta(:)
+     FIELD, allocatable :: coef(:,:)
      integer, allocatable :: ns(:,:) ! ns(i,:) = (nx,ny,nz) for i th basis
      integer :: ng, num, maxn
-     double precision :: w(3)
+     FIELD :: w(3)
   end type Obj_Shel
 contains
   subroutine Shel_new(this, ng, num)
@@ -27,34 +37,6 @@ contains
     this % maxn = -1
     this % w(:) = 0
     
-
-    !L = -1
-    !do i = 1, num
-    !   if(L < sum(ns(i,:))) then
-    !      L = sum(ns(i,:))
-    !   end if
-    !end do
-    !this%maxn = L
-    !
-    !if(size(coef_l,1)<L+1 ) then
-    !   throw_err("size mismatch",1)
-    !end if
-    !if(size(ns,1)<num .or. size(ns,2)<ng) then
-    !   throw_err("size mismatch",1)
-    !end if
-    !if(size(zeta)<ng .or. size(coef_l,2)<ng) then
-    !   throw_err("size mismatch",1)
-    !end if    
-!
-!    this%zeta(:) = zeta(1:ng)
-!    do i = 1, num
-!       L = sum(ns(i,:))
-!       this%coef(i,:) = coef_l(L,1:ng)
-!    end do
-!    this%ns(:,:) = ns(1:num,1:3)
-!
-!    this%w(:) = w(:)
-    
   end subroutine Shel_new
   subroutine Shel_delete(this)
     type(Obj_Shel) :: this
@@ -67,8 +49,8 @@ module Mod_Nucs
   implicit none
   type Obj_Nucs
      integer :: num
-     double precision, allocatable :: ws(:,:)
-     double precision, allocatable :: zs(:)
+     FIELD, allocatable :: ws(:,:)
+     FIELD, allocatable :: zs(:)
   end type Obj_Nucs
 contains
   subroutine Nucs_new(this, num)
@@ -82,28 +64,13 @@ contains
     type(Obj_Nucs) :: this
     deallocate(this%ws, this%zs)
   end subroutine Nucs_delete
-!  subroutine Nucs_add(this, i, w, z, anum)
-!    type(Obj_Nucs) :: this
-!    integer, intent(in) :: i
-!    double precision, intent(in) :: w(3)
-!    double precision, intent(in) :: z
-!    integer, intent(in) :: anum
-!
-!    if(i<1 .or. this%num<i) then
-!       throw_err("out of range", 1)
-!    end if
-!
-!    this%ws(i,:) = w
-!    this%zs(i) = z
-!    this%anum(i) = anum
-!    
-!  end subroutine Nucs_add
 end module Mod_Nucs
+
 
 Module Mod_Nshel
   use Mod_ErrHandle
   use Mod_Shel
-  use Mod_Nucs  
+  use Mod_Nucs    
   implicit none
   type Obj_Nshel
      integer :: num
@@ -111,7 +78,7 @@ Module Mod_Nshel
      integer, allocatable :: j0s(:)
      type(Obj_Nucs) :: nucs
      integer :: nbasis
-  end type Obj_Nshel
+  end type Obj_Nshel  
 contains
   subroutine Nshel_new(this, natom, num)
     type(Obj_Nshel) :: this
@@ -129,7 +96,7 @@ contains
     use Mod_Math
     type(Obj_Nshel) :: this
     type(object) :: o    
-    double precision, allocatable :: w(:,:), zs(:), coef_l(:,:)
+    FIELD, allocatable :: w(:,:), zs(:), coef_l(:,:)
     integer ng, num, natom, idx, ia, js, k0, k1
     integer, allocatable :: katom(:), kmin(:), kmax(:), kstart(:), kng(:)    
     character(5) :: ntypes(10)
@@ -266,8 +233,8 @@ contains
     type(Obj_Nshel) :: this
     integer, intent(in) :: js, ng
     character(*), intent(in) :: ntypes(:)
-    double precision, intent(in) :: zeta(:)
-    double precision, intent(in) :: coef_l(0:,:)
+    FIELD, intent(in) :: zeta(:)
+    FIELD, intent(in) :: coef_l(0:,:)
     integer, intent(in) :: ia
     integer it, num, j, jj
 
@@ -327,7 +294,7 @@ contains
     type(Obj_Nshel) :: this
     logical ,intent(in), optional :: in_normalize
     integer :: j0, i, j, js, jj
-    double precision, allocatable :: smat(:,:)
+    FIELD, allocatable :: smat(:,:)
     logical normalize
 
     j0 = 0
@@ -358,10 +325,10 @@ contains
   subroutine Nshel_s(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    double precision :: mat(:,:)
+    FIELD :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), i, j, k
-    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    double precision :: d(3,0:5,0:5,0:10), acc, coef
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
+    FIELD :: d(3,0:5,0:5,0:10), acc, coef
 
     mat = 0
     do js = 1, this%num
@@ -406,11 +373,11 @@ contains
   subroutine Nshel_t(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    double precision :: mat(:,:)
+    FIELD :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), ir, jr, j, k, nkp(3)
-    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    double precision :: acc, coef, cum
-    double precision, allocatable :: d(:,:,:,:)
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
+    FIELD :: acc, coef, cum
+    FIELD, allocatable :: d(:,:,:,:)
 
     allocate(d(1:3, 0:10, 0:10, 0:0))
     
@@ -480,11 +447,11 @@ contains
   subroutine Nshel_v(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    double precision :: mat(:,:)
+    FIELD :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ic, maxn
     integer nx, ny, nz
-    double precision :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wpc(3), ep, ccp, q
-    double precision :: d(3,0:5,0:5,0:10), acc, coef, cr(0:10,0:10,0:10)
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wpc(3), ep, ccp, q
+    FIELD :: d(3,0:5,0:5,0:10), acc, coef, cr(0:10,0:10,0:10)
 
     mat = 0
     do js = 1, this%num
@@ -544,12 +511,13 @@ contains
   subroutine Nshel_eri(this, eri)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    double precision :: eri(:,:,:,:)
-    integer is, js, ks, ls, ig, jg, kg, lg, ii, jj, kk, ll, i,j,k,l, maxn
+    FIELD :: eri(:,:,:,:)
+    integer is, js, ks, ls, ig, jg, kg, lg, ii, jj, kk, ll, i,j,k,l
     integer nxij, nyij, nzij, nxkl, nykl, nzkl, ni(3), nj(3), nk(3), nl(3)
     integer maxni, maxnj, maxnk, maxnl
-    double precision :: acc, cpp, coef, zi, zj, zk, zl, zij, zkl, eij, ekl
-    double precision :: wi(3), wj(3), wk(3), wl(3), wij(3), wkl(3), dij, dkl
+    FIELD :: acc, cpp, coef, zi, zj, zk, zl, zij, zkl, eij, ekl
+    FIELD :: wi(3), wj(3), wk(3), wl(3), wij(3), wkl(3), dij, dkl
+    FIELD :: cdij(3,0:5,0:5,0:10), cdkl(3,0:5,0:5,0:10), cr(0:10,0:10,0:10)
     eri = 0
     do is = 1, this%num
     do js = 1, this%num
@@ -621,9 +589,9 @@ contains
   end subroutine Nshel_eri
   ! == calculation functions == 
   recursive function coef_d1(zp,wp,wj,wk,nj,nk,n) result(res)
-    double precision, intent(in) :: zp, wp, wj, wk
+    FIELD, intent(in) :: zp, wp, wj, wk
     integer, intent(in) :: nj, nk, n
-    double precision :: res
+    FIELD :: res
 
     if(nj==0 .and. nk==0 .and. n==0) then
        res = 1.0
@@ -641,9 +609,9 @@ contains
     
   end function coef_d1
   subroutine coef_d(zp,wp,wj,wk,maxnj,maxnk,maxn,res)
-    double precision, intent(in) :: zp, wp(3), wj(3), wk(3)
+    FIELD, intent(in) :: zp, wp(3), wj(3), wk(3)
     integer, intent(in) :: maxnj, maxnk, maxn
-    double precision, intent(out) :: res(:,0:,0:,0:)
+    FIELD, intent(out) :: res(:,0:,0:,0:)
     integer i, nj, nk, n
 
     do i = 1, 3
@@ -664,9 +632,9 @@ contains
     !        P(a,x) = 1/Gamma(a) . Int_0^x t^{a-1}t^{-t} dt
     use fgsl
     integer, intent(in) :: m
-    double precision, intent(in) :: z
-    double precision :: res
-    double precision :: a
+    FIELD, intent(in) :: z
+    FIELD :: res
+    FIELD :: a
     real(fgsl_double) :: ga, giaz
     double precision, parameter :: eps=10.0d-14
 
@@ -684,8 +652,8 @@ contains
   end function mole_gammainc1
   subroutine mole_gammainc(maxm, z, res, in_method)
     integer, intent(in) :: maxm
-    double precision, intent(in) :: z
-    double precision :: res(0:)
+    FIELD, intent(in) :: z
+    FIELD :: res(0:)
     integer, intent(in), optional :: in_method
     integer m, method
 
@@ -706,8 +674,8 @@ contains
   subroutine mole_gammainc_fast(maxm, z, res)
     use Mod_const, only : pi
     integer, intent(in) :: maxm
-    double precision, intent(in) :: z
-    double precision, intent(out) :: res(0:)
+    FIELD, intent(in) :: z
+    FIELD, intent(out) :: res(0:)
     integer m
 
     if(abs(z)<1.0d-4) then
@@ -726,9 +694,9 @@ contains
     
   end subroutine mole_gammainc_fast
   recursive function coef_R1(zp,wpc,n,j) result(res)
-    double precision :: zp, wpc(3)
+    FIELD :: zp, wpc(3)
     integer, intent(in) :: n(3), j
-    double precision :: res, d2, Fj
+    FIELD :: res, d2, Fj
     integer :: id_i(3), i
 
     res = 0
@@ -752,10 +720,10 @@ contains
   end function coef_R1
   subroutine coef_R(zp,wpc,maxn, cr, in_method)
     use Mod_Timer
-    double precision, intent(in) :: zp
-    double precision, intent(in) :: wpc(3)
+    FIELD, intent(in) :: zp
+    FIELD, intent(in) :: wpc(3)
     integer, intent(in) :: maxn
-    double precision, intent(out) :: cr(0:,0:,0:)
+    FIELD, intent(out) :: cr(0:,0:,0:)
     integer, intent(in), optional :: in_method
     integer method
     integer nx, ny, nz, n(3)    
@@ -787,14 +755,14 @@ contains
     
   end subroutine coef_R
   subroutine coef_R_fast(zp,wpc,maxn, m_gamma, cr)
-    double precision, intent(in) :: zp
-    double precision, intent(in) :: wpc(3)
+    FIELD, intent(in) :: zp
+    FIELD, intent(in) :: wpc(3)
     integer, intent(in) :: maxn
     integer, intent(in) :: m_gamma
-    double precision, intent(out) :: cr(0:,0:,0:)
-    double precision, allocatable :: Fj(:)
-    double precision, allocatable :: rmap(:,:,:,:)
-    double precision :: d2, tmp
+    FIELD, intent(out) :: cr(0:,0:,0:)
+    FIELD, allocatable :: Fj(:)
+    FIELD, allocatable :: rmap(:,:,:,:)
+    FIELD :: d2, tmp
     integer j, nnn, nx, ny, nz
     
     cr(:,:,:) = 0

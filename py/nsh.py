@@ -158,12 +158,6 @@ class Nshel:
                         cp = ep*(np.pi/zp)**(1.5)
 
                         ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n+2,0)
-                        """
-                        ds = [ [ [ coef_d1(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
-                                   for nk in range(sk.max_n+2+1)]
-                                 for nj in range(sj.max_n+1)]
-                               for ir in range(3)]
-                        """
 
                         for jj in range(sj.num):
                             for kk in range(sk.num):
@@ -242,7 +236,10 @@ class Nshel:
                                     k = sk.j0 + kk
                                     mat[j,k] += acc*coef
         return mat                
-            
+
+    def eri(self):
+        pass
+                
     def to_gtos(self):
         gtos = []
         for shel in self.shels:            
@@ -252,7 +249,11 @@ class Nshel:
                                 shel.w,
                                 shel.ns[jn,:]))
         return gtos
-        
+
+    def num_basis(self):
+        nn = sum([shel.num for shel in self.shels])
+        return nn
+    
 def nshel_load(j):
     
     zan = j["ian"]
