@@ -29,7 +29,7 @@ def dfact(n):
 def comb(n, j):
     return fact(n)/(fact(j)*fact(n-j))
     
-def inc_gamma_f1(maxm, z):
+def igamma_f1(maxm, z):
     x = z.real
     y = z.imag
     eps = 10.0**(-10.0)
@@ -91,7 +91,7 @@ anR[NF_max] = {4}
     res = (fmR+bmR) + 1.0j*(fmI+bmI)
     return res
 
-def inc_gamma_f2(maxm, z):
+def igamma_f2(maxm, z):
     x = z.real
     y = z.imag
     eps = 10.0**(-10.0)
@@ -100,7 +100,7 @@ def inc_gamma_f2(maxm, z):
         raise RuntimeError("Re[z] must be positive")
 
     if(y < -eps):
-        tmp = inc_gamma_f2(maxm, x-1.0j*y)
+        tmp = igamma_f2(maxm, x-1.0j*y)
         return tmp.conj()
 
     NR = 47
@@ -130,7 +130,7 @@ def inc_gamma_f2(maxm, z):
         res.append(1.0/(2*m+1) *an[NR]/bn[NR])
     return np.array(res)
 
-def inc_gamma_g1(maxm, z):
+def exp_igamma_g1(maxm, z):
     MAX_M = 100
     NF_MAX=50
     
@@ -189,7 +189,7 @@ def inc_gamma_g1(maxm, z):
 
     return (g_R+b_R) + 1.0j*(g_I+b_I)
 
-def inc_gamma_g2(maxm, z):
+def exp_igamma_g2(maxm, z):
     MAX_N = 40
     x = z.real
     y = z.imag
@@ -244,12 +244,12 @@ def inc_gamma_g2(maxm, z):
         res.append(1.0/(2*m+1) * (an_R+1.0j*an_I)/(bn_R+1.0j*an_I) )
     return np.array(res)
     
-def inc_gamma_py(maxm, z):
+def igamma_py(maxm, z):
     res = [ 1.0/(2*m+1) * hyp1f1(m+0.5, m+1.5, -z)
             for m in range(0,maxm+1)]
     return np.array(res)
 
-def inc_gamma_real(maxm, z):
+def igamma_real(maxm, z):
     
     eps = 10.0**(-14.0)
     res_list = []
@@ -270,7 +270,7 @@ def inc_gamma_real(maxm, z):
             res_list.append(res)
     return np.array(res_list)
     
-def inc_gamma(maxm, z):
+def igamma(maxm, z):
     """
     Compute incomplete gamma function defined below
     .    F_m(z) = Int_0^1 t^{2m} Exp[-zt^2]dt
@@ -298,11 +298,11 @@ def inc_gamma(maxm, z):
         eps = 10.0**(-15)
         if(x > -eps and y > -eps):
             if(x < 21 and x+y < 37):
-                return inc_gamma_f2(maxm, z)
+                return igamma_f2(maxm, z)
             else:
-                return inc_gamma_f1(maxm, z)
+                return igamma_f1(maxm, z)
         else:
-            res = inc_gamma(maxm, z.conjugate())
+            res = igamma(maxm, z.conjugate())
             return res.conjugate()
             
 def coef_d1(zp,wpk,wak,wbk,nak,nbk,nk):

@@ -23,18 +23,18 @@ class TestMolfunc(unittest.TestCase):
         self.assertEqual(10, comb(5,2))
         self.assertEqual(10, comb(5,3))
 
-    def test_f1(self):
+    def test_igamma(self):
         ref = 0.96392503253589557+0.06262986651323893j
         
-        calc = inc_gamma_py(0, 0.1-0.2j)        
+        calc = igamma_py(0, 0.1-0.2j)        
 	self.assertAlmostEqual(ref, calc[0])
 
-        calc = inc_gamma_f2(0, 0.1-0.2j)
+        calc = igamma_f2(0, 0.1-0.2j)
         self.assertAlmostEqual(ref, calc[0])
 
         for z in [0.1-0.2j, 0.3+0.1j, 21.2+15.5j, 23.0+15.5j]:
-            res = inc_gamma_py(3, z)
-            calc = inc_gamma(3, z)
+            res = igamma_py(3, z)
+            calc = igamma(3, z)
             for i in range(3+1):
                 self.assertAlmostEqual(res[i], calc[i])
         
