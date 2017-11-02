@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.special import gamma, erf, gammainc
+from numpy import sqrt, pi, exp, cos, sin
+from scipy.special import gamma, erf, gammainc, hyp1f1
 
 def prod(xs):
     acc = 1
@@ -13,8 +14,263 @@ def gtoint(n, z):
     if(n==0):
         return np.sqrt(np.pi/z)
     return (n-1)/(2*z) * gtoint(n-2,z)
+def fact(n):
+    acc = 1
+    for i in range(n,0,-1):
+        acc *= i
+    return acc
+    
+def dfact(n):
+    acc = 1
+    for i in range(n,0,-2):
+        acc *= i
+    return acc
 
-def mole_gammainc(m, z):
+def comb(n, j):
+    return fact(n)/(fact(j)*fact(n-j))
+    
+def inc_gamma_f1(maxm, z):
+    x = z.real
+    y = z.imag
+    eps = 10.0**(-10.0)
+
+    if(x<eps or y<-eps):
+        raise RuntimeError("Re[z] and Im[z] must be positive")
+
+    z2 = x*x+y*y
+    az = abs(z)
+    c = sqrt(pi*(az+x)/(8*z2))
+    s = sqrt(pi*(az-x)/(8*z2)) + eps
+
+    nf_max = 50
+    nf_0 = 10
+    anR = np.zeros(nf_max+1)
+    anI = np.zeros(nf_max+1)
+    anR[0] = -x/(2*z2)*exp(-x)*cos(y) + y/(2*z2)*exp(-x)*sin(y)
+    anI[0] = +y/(2*z2)*exp(-x)*cos(y) + x/(2*z2)*exp(-x)*sin(y)
+    delta = 10.0**(-15)
+    convq = False
+    for n in range(1,nf_max):
+        anR[n] = -(2*n-1) * (x/(2*z2)*anR[n-1] + y/(2*z2)*anI[n-1])
+        anI[n] = +(2*n-1) * (y/(2*z2)*anR[n-1] - x/(2*z2)*anI[n-1])
+        if(n>nf_0):
+            if(c*delta > abs(anR[n]) and s*delta>abs(anI[n])):                
+                convq = True
+                break
+            
+    if(not convq):
+        print 
+        print c, delta, anR[nf_max-1]
+        print c*delta > abs(anR[nf_max-1])
+        print s, delta, anI[nf_max-1]
+        print s*delta>abs(anI[nf_max-1])
+        raise RuntimeError("""not converged.
+z = {0}
+c = {1}
+s = {2}
+delta = {3}
+anR[NF_max] = {4}
+        """.format(z, c, s, delta, anR[nf_max]))
+
+    fmR = np.zeros(maxm+1)
+    fmI = np.zeros(maxm+1)
+    fmR[0] = +c + np.sum(anR)
+    fmI[0] = -s + np.sum(anI)
+    for m in range(1,maxm+1):
+        fmR[m] = (2*m-1) * (x/(2*z2)*fmR[m-1] + y/(2*z2)*fmI[m-1])
+        fmI[m] = (2*m-1) * (x/(2*z2)*fmI[m-1] - y/(2*z2)*fmR[m-1])
+
+    bmR = np.zeros(maxm+1)
+    bmI = np.zeros(maxm+1)
+    bmR[0] = 0.0
+    bmI[0] = 0.0
+    for m in range(1,maxm+1):
+        bmR[m] = anR[0] + (2*m-1)*(x/(2*z2)*bmR[m-1] + y/(2*z2)*bmI[m-1])
+        bmI[m] = anI[0] + (2*m-1)*(x/(2*z2)*bmI[m-1] - y/(2*z2)*bmR[m-1])
+
+    res = (fmR+bmR) + 1.0j*(fmI+bmI)
+    return res
+
+def inc_gamma_f2(maxm, z):
+    x = z.real
+    y = z.imag
+    eps = 10.0**(-10.0)
+
+    if(x < -eps):
+        raise RuntimeError("Re[z] must be positive")
+
+    if(y < -eps):
+        tmp = inc_gamma_f2(maxm, x-1.0j*y)
+        return tmp.conj()
+
+    NR = 47
+    bn = np.zeros(NR+1,dtype=complex)
+    an = np.zeros(NR+1,dtype=complex)
+
+    bn[0] = 1.0
+    bn[1] = 1.0 + 0.5*z
+    for n in range(2,NR+1):
+        bn[n] = bn[n-1] + z*z/(4*(2*n-1)*(2*n-3))*bn[n-2]
+
+    res = []
+    for m in range(maxm+1):
+        an[0] = 1.0
+        t1 = float(2*m+1)/(2*m+3)
+        t2 = float(2*m+1)/((2*m+3)*(2*m+5))
+        t3 = float((2*m+1)*((2*m+1)**2+44))/(60*(2*m+3)*(2*m+5)*(2*m+7))
+        an[1] = bn[1] - t1*z
+        an[2] = bn[2] - t1*z - t2*z*z
+        an[3] = bn[3] - t1*z - t2*z*z - t3*z*z*z
+        for n in range(4,NR+1):
+            f1 = float(2*n-2*m-5)/(2*(2*n-3)*(2*n+2*m+1))
+            f2 = 1/float(4*(2*n-1)*(2*n-3))
+            f3 = -f1/(4*(2*n-3)*(2*n-5))
+            e = -f1
+            an[n] = (1+f1*z)*an[n-1] + (e+f2*z)*z*an[n-2] + f3*z**3*an[n-3]
+        res.append(1.0/(2*m+1) *an[NR]/bn[NR])
+    return np.array(res)
+
+def inc_gamma_g1(maxm, z):
+    MAX_M = 100
+    NF_MAX=50
+    
+    x = z.real
+    y = z.imag
+    eps = 10.0**(-10.0)
+    delta = 10.0**(-15.0)
+    
+
+    if(maxm > MAX_M):
+        raise RuntimeError("maxm must be lesser than 100")
+
+    if(x < eps or y < -eps):
+        raise RuntimeError("Re[z] and Im[z] must be positive")
+
+    xxyy = x*x+y*y
+    az = sqrt(xxyy)
+    twp_xxyy = 2*xxyy
+
+    c = sqrt((pi*(az+x)/(8*xxyy)))
+    s = sqrt((pi*(az-x)/(8*xxyy)))
+    an_R = 0.0
+    an_I = 0.0
+    anm1_R = 0.0
+    anm1_I = 0.0
+    conv = False
+    snR = c*exp(-x)*sin(y) + s*exp(-x)*cos(y) + anm1_R
+    snI = c*exp(-x)*cos(y) - s*exp(-x)*sin(y) + anm1_I
+    for n in range(1,NF_MAX):
+        an_R = (2*n-1) * (x/two_xxyy*anm1_R + y/two_xxyy*anm1_I)
+        an_I = (2*n-1) * (x/two_xxyy*anm1_I - y/two_xxyy*anm1_R)
+        sn_R += an_R
+        sn_I += an_I
+        anm1_R = an_R
+        anm1_I = an_I
+        if(delta>abs(an_R/sn_R) and delta>abs(an_I/sn_I)):
+            conv = True
+            break
+    if(not convq):
+        raise RuntimeError("not converged")
+
+    g_R = np.zeros(MAX_M)
+    g_I = np.zeros(MAX_M)
+    g_R[0] = sn_R
+    g_I[0] = sn_I
+    for m in range(1,maxm+1):
+        g_R[m] = -(2*m-1)*(x/two_xxyy*g_R[m-1] + y/two_xxyy*g_I[m-1])
+        g_I[m] = +(2*m-1)*(y/two_xxyy*g_R[m-1] - x/two_xxyy*g_I[m-1])
+    b_R = np.zeros(MAX_M)
+    b_I = np.zeros(MAX_M)
+    b_R[0] = 0.0
+    b_I[0] = 0.0
+    for m in range(1,maxm+1):
+        b_R[m] = +x/two_xxyy - (2*m-1)*(x/two_xxyy*b_R[m-1] + y/two_xxyy*b_I[m-1])
+        b_I[m] = -y/two_xxyy + (2*m-1)*(y/two_xxyy*b_R[m-1] - x/two_xxyy*b_I[m-1])
+
+    return (g_R+b_R) + 1.0j*(g_I+b_I)
+
+def inc_gamma_g2(maxm, z):
+    MAX_N = 40
+    x = z.real
+    y = z.imag
+    delta = 10.0**(-15.0)
+
+    if(x<-delta):
+        raise RuntimeError("Re[z] must be positive")
+
+    res = []
+    for m in range(maxm+1):
+        conv = False
+        
+        bnm2_R=1.0
+        bnm2_I=0.0
+        bnm1_R=bnm2_R + 2.0/(2*m+5)*x
+        bnm1_I=bnm2_I + 2.0/(2*m+5)*y
+
+        anm2_R=1.0
+        anm2_I=0.0
+        anm1_R=anm2_R - 2*x/(2*m+3)
+        anm1_I=anm2_I - 2*y/(2*m+3)
+
+        for n in range(2,maxn):
+            f1 = float(2*(2*m+1))/((4*n+2*m+1)*(4*n+2*m-3))
+            f2 = (float(8*(n-1)*(2*n+2*m-1)) /
+                  ((4*n+2*m-1)*(4*n+2*m-3)*(4*n+2*m-3)*(4*n+2*m-5)) )
+            t1 = 1+f1*x
+            t2 = f1*y
+            t3 = (x*x-y*y)*f2
+            t4 = 2*x*y*f2
+            an_R = t1*anm1_R - t2*anm1_I + t3*anm2_R - t4*anm2_I
+            an_I = t1*anm1_I + t2*anm1_R + t3*anm2_I + t4*anm2_R
+            bn_R = t1*bnm1_R - t2*bnm1_I + t3*bnm2_R - t4*bnm2_I
+            bn_I = t1*bnm1_I + t2*bnm1_R + t3*bnm2_I + t4*bnm2_R
+
+            bn = 0.0
+            for j in range(n+1):
+                bn += (float(dfact(2*n+2*m+2*j+1))/dfact(4*n+2*m+1) *
+                       comb(n, j) * (2*z)**(n-j))
+            gn = (an_R+1.0j*an_I)/(bn_R+1.0j*bn_I)
+            gnm1 = (anm1_R+1.0j*anm1_I)/(bnm1_R+1.0j*bnm1_I)
+            if(abs((gn-gnm1)/gn) < delta):
+                conv = True
+            anm2_R=anm1_R; bnm2_R=bnm1_R; 
+            anm2_I=anm1_I; bnm2_I=bnm1_I
+            anm1_R=an_R;   bnm1_R=bn_R; 
+            anm1_I=an_I;   bnm1_I=bn_I
+
+        if(not conv):
+            raise RuntimeError("not converged")
+
+        res.append(1.0/(2*m+1) * (an_R+1.0j*an_I)/(bn_R+1.0j*an_I) )
+    return np.array(res)
+    
+def inc_gamma_py(maxm, z):
+    res = [ 1.0/(2*m+1) * hyp1f1(m+0.5, m+1.5, -z)
+            for m in range(0,maxm+1)]
+    return np.array(res)
+
+def inc_gamma_real(maxm, z):
+    
+    eps = 10.0**(-14.0)
+    res_list = []
+    for m in range(maxm+1):
+        if(abs(z)<eps):
+            res_list.append(1/(2*m+1.0))
+        else:
+            a = m+0.5
+            res = gamma(a)/(2*z**a)*gammainc(a, z)
+            #        res = sqrt(pi/z)/2 * erf(sqrt(z))        
+    
+            if((not res<1) and (not res>-1)):
+                raise RuntimeError("""gammain failed
+                res: {2}
+                m: {0}
+                z: {1}
+                """.format(m,z,res))
+            res_list.append(res)
+    return np.array(res_list)
+    
+def inc_gamma(maxm, z):
     """
     Compute incomplete gamma function defined below
     .    F_m(z) = Int_0^1 t^{2m} Exp[-zt^2]dt
@@ -32,29 +288,23 @@ def mole_gammainc(m, z):
     .  F_m(0) = Int_0^1 t^{2m} dt 
     .         = (2m+1)^{-1} [t^{2m+1}]_0^1 
     .         = (2m+1)^{-1}
-    """
+    """    
 
-    eps = 10.0**(-14.0)
-    
-    if(abs(z)<eps):
-        return 1/(2*m+1.0)
-    
-    if(m==0):
-        a = m+0.5
-        res = gamma(a)/(2*z**a)*gammainc(a, z)
-#        res = sqrt(pi/z)/2 * erf(sqrt(z))
-    else:
-        a = m+0.5
-        res = gamma(a)/(2*z**a)*gammainc(a, z)
-        
-    if((not res<1) and (not res>-1)):
-        raise RuntimeError("""gammain failed
-        res: {2}
-        m: {0}
-        z: {1}
-        """.format(m,z,res))
-    return res
-    
+    x = z.real
+    y = z.imag
+    if(isinstance(z, float)):
+        return in_gamma_real(maxm, z)
+    elif(isinstance(z, complex)):
+        eps = 10.0**(-15)
+        if(x > -eps and y > -eps):
+            if(x < 21 and x+y < 37):
+                return inc_gamma_f2(maxm, z)
+            else:
+                return inc_gamma_f1(maxm, z)
+        else:
+            res = inc_gamma(maxm, z.conjugate())
+            return res.conjugate()
+            
 def coef_d1(zp,wpk,wak,wbk,nak,nbk,nk):
     if(nak==0 and nbk ==0 and nk ==0):
         return 1.0

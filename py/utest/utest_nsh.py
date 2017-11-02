@@ -57,6 +57,7 @@ a[i,j] = {2}
 b[i,j] = {3}
 """.format(i,j,a[i,j],b[i,j],msg))
 
+    
 class TestNsh(TestCase):
     def test_dz(self):
         
