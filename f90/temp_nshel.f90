@@ -70,7 +70,8 @@ end module Mod_Nucs
 Module Mod_Nshel
   use Mod_ErrHandle
   use Mod_Shel
-  use Mod_Nucs    
+  use Mod_Nucs
+  use Mod_Molfunc
   implicit none
   type Obj_Nshel
      integer :: num
@@ -78,7 +79,7 @@ Module Mod_Nshel
      integer, allocatable :: j0s(:)
      type(Obj_Nucs) :: nucs
      integer :: nbasis
-  end type Obj_Nshel  
+  end type Obj_Nshel
 contains
   subroutine Nshel_new(this, natom, num)
     type(Obj_Nshel) :: this
@@ -477,7 +478,7 @@ contains
                    maxn = this%shels(js)%maxn + this%shels(ks)%maxn
                    wpc(:) = wp(:)-this%nucs%ws(ic,:)
                    q = this%nucs%zs(ic)
-                   call coef_R(zp,wpc,maxn, cr, 1); check_err()
+                   call coef_R(zp,wpc,maxn, cr); check_err()
                    do jj = 1, this%shels(js)%num
                       do kk = 1, this%shels(ks)%num                      
                          nj(:) = this%shels(js)%ns(jj,:)
@@ -509,6 +510,7 @@ contains
     
   end subroutine Nshel_v
   subroutine Nshel_eri(this, eri)
+    use Mod_Molfunc, only : coef_d
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
     FIELD :: eri(:,:,:,:)
@@ -539,7 +541,7 @@ contains
           cpp = 2*pi**(2.5d0)/(zij*zkl*sqrt(zij+zkl))*eij*ekl
           call coef_d(zij,wij,wi,wj,maxni,maxnj,maxni+maxnj, cdij)
           call coef_d(zkl,wkl,wk,wl,maxnk,maxnl,maxnk+maxnl, cdkl)
-          call coef_R(zij*zkl/(zij+zkl),wi-wj,maxni+maxnj+maxnk+maxnl, cr, 1)
+          call coef_R(zij*zkl/(zij+zkl),wi-wj,maxni+maxnj+maxnk+maxnl, cr)
 
           do ii = 1, this%shels(is)%num
           do jj = 1, this%shels(js)%num
@@ -587,231 +589,6 @@ contains
     end do
  
   end subroutine Nshel_eri
-  ! == calculation functions == 
-  recursive function coef_d1(zp,wp,wj,wk,nj,nk,n) result(res)
-    FIELD, intent(in) :: zp, wp, wj, wk
-    integer, intent(in) :: nj, nk, n
-    FIELD :: res
-
-    if(nj==0 .and. nk==0 .and. n==0) then
-       res = 1.0
-    else if(n<0 .or. n>nj+nk) then
-       res = 0.0
-    else if(nj>0) then
-       res = 1/(2*zp) * coef_d1(zp,wp,wj,wk,nj-1,nk,n-1) + &
-            (wp-wj)   * coef_d1(zp,wp,wj,wk,nj-1,nk,n)   + &
-            (n+1)     * coef_d1(zp,wp,wj,wk,nj-1,nk,n+1)
-    else
-       res = 1/(2*zp) * coef_d1(zp,wp,wj,wk,nj,nk-1,n-1) + &
-            (wp-wk)   * coef_d1(zp,wp,wj,wk,nj,nk-1,n)   + &
-            (n+1)     * coef_d1(zp,wp,wj,wk,nj,nk-1,n+1)
-    end if
-    
-  end function coef_d1
-  subroutine coef_d(zp,wp,wj,wk,maxnj,maxnk,maxn,res)
-    FIELD, intent(in) :: zp, wp(3), wj(3), wk(3)
-    integer, intent(in) :: maxnj, maxnk, maxn
-    FIELD, intent(out) :: res(:,0:,0:,0:)
-    integer i, nj, nk, n
-
-    do i = 1, 3
-       do nj = 0, maxnj
-          do nk = 0, maxnk
-             do n = 0, maxn
-                res(i,nj,nk,n) = coef_d1(zp,wp(i),wj(i),wk(i),nj,nk,n)
-             end do
-          end do
-       end do
-    end do
-    
-  end subroutine coef_d
-  recursive function mole_gammainc1(m, z) result(res)
-    ! compute incompute gamma function 
-    !        F_m(z) = Int_0^1 t^{2m} Exp[-zt^2] dt
-    ! implemented function P in gsl is defined as
-    !        P(a,x) = 1/Gamma(a) . Int_0^x t^{a-1}t^{-t} dt
-    use fgsl
-    integer, intent(in) :: m
-    FIELD, intent(in) :: z
-    FIELD :: res
-    FIELD :: a
-    real(fgsl_double) :: ga, giaz
-    double precision, parameter :: eps=10.0d-14
-
-    if(abs(z)<eps) then
-       res = 1/(2*m+1.0d0)
-       return
-    end if
-
-    a = m+0.5d0
-    ga = fgsl_sf_gamma(a)
-    giaz = fgsl_sf_gamma_inc_P(a, z)
-    res = ga/(2*z**a) * giaz
-    return
-
-  end function mole_gammainc1
-  subroutine mole_gammainc(maxm, z, res, in_method)
-    integer, intent(in) :: maxm
-    FIELD, intent(in) :: z
-    FIELD :: res(0:)
-    integer, intent(in), optional :: in_method
-    integer m, method
-
-    if(present(in_method)) then
-       method = in_method
-    else
-       method = 0
-    end if
-
-    if(method == 0) then
-       do m = 0, maxm
-          res(m) = mole_gammainc1(m, z)
-       end do
-    else
-       call mole_gammainc_fast(maxm, z, res); check_err()
-    end if
-  end subroutine mole_gammainc
-  subroutine mole_gammainc_fast(maxm, z, res)
-    use Mod_const, only : pi
-    integer, intent(in) :: maxm
-    FIELD, intent(in) :: z
-    FIELD, intent(out) :: res(0:)
-    integer m
-
-    if(abs(z)<1.0d-4) then
-       do m = 0, maxm
-          res(m) = 1/(2*m+1.0d0) &
-               - z/(2*m+3) &
-               + (z**2)/(2*(2*m+5)) &
-               - (z**3)/(3*(2*m+7))
-       end do
-    else
-       res(0) = sqrt(pi/z)/2 * erf(sqrt(z))
-       do m = 1, maxm
-          res(m) = -exp(-z)/(2*z) + (2*m-1)/(2*z) * res(m-1)
-       end do
-    end if
-    
-  end subroutine mole_gammainc_fast
-  recursive function coef_R1(zp,wpc,n,j) result(res)
-    FIELD :: zp, wpc(3)
-    integer, intent(in) :: n(3), j
-    FIELD :: res, d2, Fj
-    integer :: id_i(3), i
-
-    res = 0
-    d2 = dot_product(wpc, wpc)
-        
-    if(all(n==0)) then
-       Fj = mole_gammainc1(j,zp*d2)
-       res = (-2*zp)**j * Fj
-    else
-       do i = 1, 3
-          id_i(:) = 0; id_i(i) = 1
-          if(n(i)>0) then
-             res = wpc(i) * coef_R1(zp,wpc,n(:)-id_i(:),j+1)
-             if(n(i)>1) then
-                res = res + (n(i)-1) * coef_R1(zp,wpc,n(:)-2*id_i(:),j+1)
-             end if
-          end if
-       end do
-    end if
-    
-  end function coef_R1
-  subroutine coef_R(zp,wpc,maxn, cr, in_method)
-    use Mod_Timer
-    FIELD, intent(in) :: zp
-    FIELD, intent(in) :: wpc(3)
-    integer, intent(in) :: maxn
-    FIELD, intent(out) :: cr(0:,0:,0:)
-    integer, intent(in), optional :: in_method
-    integer method
-    integer nx, ny, nz, n(3)    
-
-!    call Timer_begin("coef_R")
-
-    if(present(in_method)) then
-       method = in_method
-    else
-       method = 0
-    end if
-    
-    if(method.eq.0) then
-       do nx = 0, maxn
-          do ny = 0, maxn
-             do nz = 0, maxn
-                n(1) = nx; n(2) = ny; n(3) = nz
-                cr(nx,ny,nz) = coef_R1(zp,wpc,n,0)
-                check_err()
-             end do
-          end do
-       end do
-    else if(method.eq.1) then
-       call coef_R_fast(zp,wpc,maxn,0, cr); check_err()
-    else if(method.eq.2) then
-       call coef_R_fast(zp,wpc,maxn,1, cr); check_err()     
-    end if
- !   call Timer_end("coef_R")
-    
-  end subroutine coef_R
-  subroutine coef_R_fast(zp,wpc,maxn, m_gamma, cr)
-    FIELD, intent(in) :: zp
-    FIELD, intent(in) :: wpc(3)
-    integer, intent(in) :: maxn
-    integer, intent(in) :: m_gamma
-    FIELD, intent(out) :: cr(0:,0:,0:)
-    FIELD, allocatable :: Fj(:)
-    FIELD, allocatable :: rmap(:,:,:,:)
-    FIELD :: d2, tmp
-    integer j, nnn, nx, ny, nz
-    
-    cr(:,:,:) = 0
-    d2 = dot_product(wpc, wpc)
-
-    allocate(Fj(0:maxn*3))
-    allocate(rmap(0:maxn,0:maxn,0:maxn,0:3*maxn))
-
-    call mole_gammainc(3*maxn, zp*d2, Fj(:), m_gamma); check_err()
-
-    tmp = 1
-    do j = 0, 3*maxn
-       rmap(0,0,0,j) = tmp * Fj(j)
-       tmp = tmp*(-2*zp)
-    end do
-
-    do nnn = 1, 3*maxn
-       do nx = 0, min(maxn, nnn)
-          do ny = 0, min(maxn, nnn-nx)
-             do nz = 0, min(maxn, nnn-nx-ny)
-                do j = 0, 3*maxn-nnn
-                   if(nx>0) then
-                      tmp = wpc(1)*rmap(nx-1,ny,nz,j+1)
-                      if(nx>1) then
-                         tmp = tmp + (nx-1)*rmap(nx-2,ny,nz,j+1)
-                      end if
-                      rmap(nx,ny,nz,j) = tmp
-                   else if(ny>0) then
-                      tmp = wpc(2)*rmap(nx,ny-1,nz,j+1)
-                      if(ny>1) then
-                         tmp = tmp + (ny-1)*rmap(nx,ny-2,nz,j+1)
-                      end if
-                      rmap(nx,ny,nz,j) = tmp                      
-                   else if(nz>0) then
-                      tmp = wpc(3)*rmap(nx,ny,nz-1,j+1)
-                      if(nz>1) then
-                         tmp = tmp + (nz-1)*rmap(nx,ny,nz-2,j+1)
-                      end if
-                      rmap(nx,ny,nz,j) = tmp                      
-                   end if
-                end do
-             end do
-          end do
-       end do
-    end do
-
-    cr(0:maxn,0:maxn,0:maxn) = rmap(:,:,:,0)
-        
-  end subroutine coef_R_fast
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)

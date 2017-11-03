@@ -10,11 +10,14 @@ BUILD=${NAEWDY_PATH}/build
 TESTS=${NAEWDY_PATH}/tests
 
 # -- compile --
-dnshel.o: temp_nshel.f90
+rnshel.o: temp_nshel.f90
 	${FC} ${FF} -c $< -o $@ -DREALGTO
 
 hnshel.o: temp_nshel.f90
 	${FC} ${FF} -c $< -o $@ -DHERMITEGTO
+
+rmolfunc.o: molfunc.f90
+	${FC} ${FF} -c $< -o $@ -DREALFUNC
 
 %.o: %.f90
 	${FC} ${FF} -c $< -o $@
@@ -26,7 +29,7 @@ clean:
 
 # ==== utest(nshel) ====
 TARGET=utest_nshel
-MODULES=${MODS0} utest hnshel ${TARGET}
+MODULES=${MODS0} utest rmolfunc rnshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/utest_nshel: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
@@ -35,7 +38,7 @@ check_nshel: ${BUILD}/utest_nshel
 
 # ==== utest(molfunc) ====
 TARGET=utest_molfunc
-MODULES=${MODS0} utest molfunc ${TARGET}
+MODULES=${MODS0} utest rmolfunc ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/utest_molfunc: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 

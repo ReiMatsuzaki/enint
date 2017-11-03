@@ -22,6 +22,9 @@ contains
     end if
     ierr = ierr0
   end subroutine ErrHandle_err
+  subroutine ErrHandle_ierr0
+    ierr = 0
+  end subroutine ErrHandle_ierr0
   subroutine open_w(ifile, filename)
     integer, intent(in) ::  ifile
     character(*), intent(in) ::  filename
