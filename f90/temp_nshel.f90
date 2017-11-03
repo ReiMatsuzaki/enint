@@ -509,6 +509,108 @@ contains
     end do
     
   end subroutine Nshel_v
+  subroutine Nshel_r(this, mat)
+    use Mod_const, only : pi
+    type(Obj_Nshel) :: this
+    integer, intent(in) :: ir
+    FIELD :: mat(:,:,:)
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), i, j, k
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
+    FIELD :: d(3,0:5,0:5,0:10), acc, coef
+
+    mat = 0
+    do js = 1, this%num
+       do ks = 1, this%num    
+          wj(:) = this%shels(js)%w(:)
+          wk(:) = this%shels(ks)%w(:)
+          d2 = dot_product(wj-wk,wj-wk)
+          maxnj = this%shels(js)%maxn
+          maxnk = this%shels(ks)%maxn
+
+          do jg = 1, this%shels(js)%ng
+             do kg = 1, this%shels(ks)%ng
+                zj = this%shels(js)%zeta(jg)
+                zk = this%shels(ks)%zeta(kg)
+                zp = zj+zk
+                wp(:) = (zj*wj(:) + zk*wk(:))/zp
+                ep = exp(-zj*zk/zp*d2)
+                cp = ep*(pi/zp)**(1.5)
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk+1,0, d); check_err()
+
+                do ir = 1, 3
+                do jj = 1, this%shels(js)%num
+                do kk = 1, this%shels(ks)%num                      
+                   nj(:) = this%shels(js)%ns(jj,:)
+                   nk(:) = this%shels(ks)%ns(kk,:)
+                   nk(ir) = nk(ir) + 1
+                   acc = 1
+                   do i = 1, 3
+                      acc = acc * d(i,nj(i),nk(i),0)
+                   end do
+                   coef = cp * this%shels(js)%coef(jj,jg) &
+                        * this%shels(ks)%coef(kk,kg)
+                   j = this%j0s(js) + jj
+                   k = this%j0s(ks) + kk
+                   mat(ir,j,k) = mat(j,k) + coef*acc
+                end do                   
+                end do
+                end do
+             end do
+          end do
+       end do
+    end do    
+  end subroutine Nshel_r
+  subroutine Nshel_d(this, mat)
+    use Mod_const, only : pi
+    type(Obj_Nshel) :: this
+    integer, intent(in) :: ir
+    FIELD :: mat(:,:,:)
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), i, j, k
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
+    FIELD :: d(3,0:5,0:5,0:10), acc, coef
+
+    mat = 0
+    do js = 1, this%num
+       do ks = 1, this%num    
+          wj(:) = this%shels(js)%w(:)
+          wk(:) = this%shels(ks)%w(:)
+          d2 = dot_product(wj-wk,wj-wk)
+          maxnj = this%shels(js)%maxn
+          maxnk = this%shels(ks)%maxn
+
+          do jg = 1, this%shels(js)%ng
+             do kg = 1, this%shels(ks)%ng
+                zj = this%shels(js)%zeta(jg)
+                zk = this%shels(ks)%zeta(kg)
+                zp = zj+zk
+                wp(:) = (zj*wj(:) + zk*wk(:))/zp
+                ep = exp(-zj*zk/zp*d2)
+                cp = ep*(pi/zp)**(1.5)
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk+1,0, d); check_err()
+
+                do ir = 1, 3
+                do jj = 1, this%shels(js)%num
+                do kk = 1, this%shels(ks)%num                      
+                   nj(:) = this%shels(js)%ns(jj,:)
+                   nk(:) = this%shels(ks)%ns(kk,:)
+                   nk(ir) = nk(ir) + 1
+                   acc = -2*zk*&
+                        d(1,nj(1),nk(1),0)*d(2,nj(2),nk(2),0)*d(3,nj(3),nk(3),0)
+                   nk(ir) = nk(ir) - 2
+                   acc = acc + (nk(ir)-1) * &
+                        d(1,nj(1),nk(1),0)*d(2,nj(2),nk(2),0)*d(3,nj(3),nk(3),0)
+                   coef = cp* this%shels(js)%coef(jj,jg) * this%shels(ks)%coef(kk,kg)
+                   j = this%j0s(js) + jj
+                   k = this%j0s(ks) + kk
+                   mat(ir,j,k) = mat(j,k) + coef*acc
+                end do                   
+                end do
+                end do
+             end do
+          end do
+       end do
+    end do        
+  end subroutine Nshel_d
   subroutine Nshel_eri(this, eri)
     use Mod_Molfunc, only : coef_d
     use Mod_const, only : pi
