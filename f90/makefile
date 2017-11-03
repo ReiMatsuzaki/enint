@@ -33,6 +33,15 @@ ${BUILD}/utest_nshel: ${OBJS}
 check_nshel: ${BUILD}/utest_nshel
 	${BUILD}/utest_nshel
 
+# ==== utest(molfunc) ====
+TARGET=utest_molfunc
+MODULES=${MODS0} utest molfunc ${TARGET}
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_molfunc: ${OBJS}
+	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
+check_molfunc: ${BUILD}/utest_molfunc
+	${BUILD}/utest_molfunc
+
 # ==== Enint ====
 TARGET=enint
 MODULES=${MODS0} nshel ${TARGET}

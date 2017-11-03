@@ -5,12 +5,15 @@ module Mod_Molfunc
   implicit none
 contains
   subroutine igamma_f1(maxm, z, res)
+    use Mod_Const, only : ii, pi
     integer, intent(in) :: maxm
     complex(kind(0d0)), intent(in) :: z
-    complex(kind(0d0)), intent(out) :: res(:)
-    double precision, parameter :: esp = 1.0d-10
+    complex(kind(0d0)), intent(out) :: res(0:)
+    double precision, parameter :: eps = 1.0d-10
+    double precision, parameter :: delta = 1.0d-15
     integer, parameter :: NF_MAX=50, NF_0=10
-    double precision :: anR(0:maxm), anI(0:maxm), z2, az
+    integer :: m, n
+    double precision :: anR(0:NF_MAX), anI(0:NF_MAX), z2, az, c, s, x, y
     double precision :: bmR(0:maxm), bmI(0:maxm), fmR(0:maxm), fmI(0:maxm)
     logical :: convq
 
@@ -31,8 +34,8 @@ contains
        anR(n) = -(2*n-1) * (x/(2*z2)*anR(n-1) + y/(2*z2)*anI(n-1))
        anI(n) = +(2*n-1) * (y/(2*z2)*anR(n-1) - x/(2*z2)*anI(n-1))
        if(n>NF_0) then
-          if(c*delta > abs(anR(n)) and s*delta>abs(anI(n))) then
-             convq = True
+          if(c*delta > abs(anR(n)) .and. s*delta>abs(anI(n))) then
+             convq = .True.
              exit
           end if
        end if
@@ -41,11 +44,11 @@ contains
        throw_err("not converged",1)
     end if
     
-    fmR[0] = +c + sum(anR)
-    fmI[0] = -s + sum(anI)
+    fmR(0) = +c + sum(anR)
+    fmI(0) = -s + sum(anI)
     do m = 1, maxm
-       fmR[m] = (2*m-1) * (x/(2*z2)*fmR(m-1) + y/(2*z2)*fmI(m-1))
-       fmI[m] = (2*m-1) * (x/(2*z2)*fmI(m-1) - y/(2*z2)*fmR(m-1))
+       fmR(m) = (2*m-1) * (x/(2*z2)*fmR(m-1) + y/(2*z2)*fmI(m-1))
+       fmI(m) = (2*m-1) * (x/(2*z2)*fmI(m-1) - y/(2*z2)*fmR(m-1))
     end do
 
     bmR(0) = 0
@@ -61,11 +64,12 @@ contains
   subroutine igamma_f2(maxm, z, res)
     integer, intent(in) :: maxm
     complex(kind(0d0)), intent(in) :: z
-    complex(kind(0d0)), intent(out) :: res(:)
-    double precision, parameter :: esp = 1.0d-10
-    integer, parameter NR=47
+    complex(kind(0d0)), intent(out) :: res(0:)
+    double precision, parameter :: eps = 1.0d-10
+    integer, parameter :: NR=47
+    integer :: m, n
     complex(kind(0d0)) :: bn(0:NR), an(0:NR)
-    double precision tmp1, tmp3, tmp5, tmp7
+    double precision tmp1, tmp3, tmp5, tmp7, e, f1, f2, f3, t1, t2, t3, x, y
 
     x = real(z)
     y = aimag(z)
@@ -74,7 +78,7 @@ contains
        throw_err("Re[z] must be positive", 1)
     end if
     if(y < -eps) then
-       call igamma_c(maxm, z, res); check_err()
+       call igamma(maxm, z, res); check_err()
        res(:) = conjg(res(:))
        return 
     end if
@@ -82,7 +86,7 @@ contains
     bn(0) = 1
     bn(1) = 1 + z/2
     do n = 2, NR
-       bn[n] = bn[n-1] + z*z/(4*(2*n-1)*(2*n-3))*bn[n-2]
+       bn(n) = bn(n-1) + z*z/(4*(2*n-1)*(2*n-3))*bn(n-2)
     end do
 
     do m = 0, maxm
@@ -91,18 +95,39 @@ contains
        t1 = tmp1/tmp3
        t2 = tmp1/(tmp3*tmp5)
        t3 = tmp1*(tmp1**2+44)/(60*tmp3*tmp5*tmp7)
-       an[1] = bn[1] -t1*z
-       an[2] = bn[2] -t1*z -t2*z**2
-       an[3] = bn[3] -t1*z -t2*z**2  -t3*z**3
+       an(1) = bn(1) -t1*z
+       an(2) = bn(2) -t1*z -t2*z**2
+       an(3) = bn(3) -t1*z -t2*z**2  -t3*z**3
        do n = 4, NR
           f1 = (2.0d0*n-2*m-5)/(2*(2*n-3)*(2*n+2*m+1))
           f2 = 1.0d0/(4*(2*n-1)*(2*n-3))
           f3 = -f1/(4*(2*n-3)*(2*n-5))
           e = -f1
-          an[n] = (1+f1*z)*an(n-1) + (e+f2*z)*z*an(n-2) + f3*z**3*an(n-3)
+          an(n) = (1+f1*z)*an(n-1) + (e+f2*z)*z*an(n-2) + f3*z**3*an(n-3)
        end do
        res(m) = 1.0d0/(2*m+1) * an(NR)/bn(NR)
     end do
     
   end subroutine igamma_f2
+  recursive subroutine igamma(maxm, z, res)
+    integer, intent(in) :: maxm
+    complex(kind(0d0)), intent(in) :: z
+    complex(kind(0d0)), intent(out) :: res(0:)
+    double precision :: x, y
+    double precision, parameter :: eps = 1.0d-15
+
+    x = real(z)
+    y = aimag(z)
+    if(x > -eps .and. y > -eps) then
+       if(x < 21 .and. x+y < 37) then
+          call igamma_f2(maxm, z, res); check_err()
+       else
+          call igamma_f1(maxm, z, res); check_err()
+       end if
+    else
+       call igamma(maxm, conjg(z), res(:))
+       res(:) = conjg(res(:))
+    end if
+    
+  end subroutine igamma
 end module Mod_Molfunc
