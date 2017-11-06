@@ -9,9 +9,13 @@ module Mod_TestArgParser
 contains
   subroutine TestArgParser_run
 
-    call Utest_sub_begin("first")
-    call test_first
-    call Utest_sub_end
+ !   call Utest_sub_begin("first")
+ !   call test_first
+ !   call Utest_sub_end
+
+    call Utest_sub_begin("second")
+    call test_second
+    call Utest_sub_end    
     
   end subroutine TestArgParser_run
   subroutine test_first()
@@ -27,6 +31,26 @@ contains
     
     call ArgParser_delete
   end subroutine test_first
+  subroutine test_second()
+    integer :: i
+    double precision :: x, y(3)
+    character(100) :: s
+    
+    call arg_parse_i("-i", i); check_err()
+    call expect_eq(523, i); check_err()
+
+    call arg_parse_s("-s", s); check_err()
+    call expect_eq("s1s2", s); check_err()
+
+    call arg_parse_d("-x", x); check_err()
+    call expect_eq(10.1d0, x); check_err()
+
+    call arg_parse_dvec("-y", y); check_err()
+    call expect_eq(10.2d0, y(1)); check_err()
+    call expect_eq(10.3d0, y(2)); check_err()
+    call expect_eq(10.4d0, y(3)); check_err()
+    
+  end subroutine test_second
 end module Mod_TestArgParser
 
 program main
