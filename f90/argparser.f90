@@ -39,7 +39,9 @@ contains
     narg = iargc()
     do i = 1, narg
        call getarg(i, ele)
-       write(*,'(a)') ele(1:2)
+       if(ele(1:1).eq."-") then
+          write(*,'(a)') ele(1:5)
+       end if
     end do
     
   end subroutine ArgParser_parse

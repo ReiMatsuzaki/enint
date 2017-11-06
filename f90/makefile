@@ -34,7 +34,7 @@ OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/utest_argparser: ${OBJS}
 	${FC} ${FF} $^ -o $@ -cpp  -llapack -lblas
 check_argparser: ${BUILD}/utest_argparser
-	${BUILD}/utest_argparser ABCD -B -C
+	${BUILD}/utest_argparser -s s1s2 -i 523 -x 10.1 -y 10.2 1.1 -2.3
 
 # ==== utest(nshel) ====
 TARGET=utest_nshel
