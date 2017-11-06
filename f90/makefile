@@ -27,6 +27,15 @@ clean:
 	rm -f *.o
 	rm -f *.mod
 
+# ==== utest(ArgParser) ====
+TARGET=utest_argparser
+MODULES=${MODS0} utest argparser ${TARGET}
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_argparser: ${OBJS}
+	${FC} ${FF} $^ -o $@ -cpp  -llapack -lblas
+check_argparser: ${BUILD}/utest_argparser
+	${BUILD}/utest_argparser ABCD -B -C
+
 # ==== utest(nshel) ====
 TARGET=utest_nshel
 MODULES=${MODS0} utest rmolfunc rnshel ${TARGET}
