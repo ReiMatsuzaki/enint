@@ -17,8 +17,14 @@ contains
   subroutine test_first()
     type(object) :: o
     call ArgParser_new
-    call ArgParser_add("v", "verbose", TYPE_S, 1)
+    call ArgParser_add("s", TYPE_S, 1)
+    call ArgParser_add("i", TYPE_I, 1)
+    call ArgParser_add("x", TYPE_D, 1)
+    call ArgParser_add("y", TYPE_D, 1)
     call ArgParser_parse(o)
+
+    call object_dump(o)
+    
     call ArgParser_delete
   end subroutine test_first
 end module Mod_TestArgParser
