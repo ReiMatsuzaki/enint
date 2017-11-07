@@ -294,6 +294,7 @@ class Nshel:
         for sh in self.shels:
             i1 = i0 + sh.num
             ys[i0:i1] = sh.ao_at(rs)
+        return ys
     
     def at(self, cs, rs):
         """

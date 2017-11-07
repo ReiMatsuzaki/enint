@@ -198,7 +198,7 @@ calc = {1}
         
         nshel.setup(True)
 
-        rs = np.array([[0.0,0.0,0.0], [0.3,0.0,0.0]])
+        rs = np.array([[0.2,0.1,0.2], [1.3,0.1,-0.1]])
         ao_rs = nshel.ao_at(rs)
         print ao_rs
         
