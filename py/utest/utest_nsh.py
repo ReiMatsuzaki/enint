@@ -78,7 +78,7 @@ class TestNsh(TestCase):
         calc = gtoele(g1, op_dw(2), g0)
         self.assertAlmostEqual(ref, calc, 5)
 
-    def test_gammainc(self):
+    def test_igamma(self):
         from scipy import integrate
         import numpy as np
 
@@ -86,7 +86,7 @@ class TestNsh(TestCase):
         for (m,z) in [(0,1.0), (0,2.0), (1,1.1), (2,1.2), (4,1.1), (1,0.0)]:
             y = t**(2*m) * np.exp(-z*t*t)
             ref = integrate.simps(y, t)
-            calc = mole_gammainc(m, z)
+            calc = igamma(m, z)[m]
             self.assertAlmostEqual(ref, calc,
                                    msg="""
 ref = {0}
@@ -99,7 +99,7 @@ calc = {1}
         wc = np.array([0.2, 0.3, 0.4])
         wpc = wp-wc
         
-        rs = coef_R(1.1, wpc, 1, 0)
+        rs = coef_R(1.1, wpc, 1, method=0)
         self.assertAlmostEqual(0.95768901, rs[0,0,0])
         self.assertAlmostEqual(0.0352501,  rs[1,1,0])
         self.assertAlmostEqual(0.0352501,  rs[0,1,1])
@@ -185,6 +185,21 @@ calc = {1}
         df = pd.read_csv(join(out, "h.csv"))
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_neshl_gms. H core")        
+
+    def test_ao_at(self):
+        nucs = Nucs()
+        ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)
+        ia2 = nucs.add_atom([1.0,0.0,0.0], 2, 0.3)
+        
+        nshel = Nshel(nucs)
+        nshel.add_shel("s", [1.1],   {0:[1.0]}, ia1)
+        nshel.add_shel("p", [1.3],   {1:[1.0]}, ia2)
+        nshel.add_shel("dxx", [1.2], {2: [1.0]}, ia2)
+        
+        nshel.setup(True)
+
+        rs = np.array([[0.0,0.0,0.0], [0.3,0.0,0.0]])
+        ao_rs = nshel.ao_at(rs)
         
 class TestCnshel(TestCase):
     def test_first(self):

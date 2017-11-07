@@ -6,6 +6,13 @@ from enint.molfunc import *
 from enint.nsh0 import GTO
 
 class Shel:
+    """
+    num : number of basis in the shell
+    ns[i,1:3]    : n vector of i th basis
+    ex[1:ng]     : exponents
+    coef[i,1:ng] : coefficient of i th basis
+    w[1:3]       : location of shell
+    """
     def __init__(self, ntypes, ex, coef_l, w):
 
         if(isinstance(ntypes, str)):
@@ -50,6 +57,33 @@ class Shel:
         self.w = np.array(w)
 
         self.j0 = 0
+
+    def ao_at(self, rs):
+        """
+        u_i(r_j) = sum_k c_k (xj-wx)^nxi (yj-wy)^nyi (zj-wz)^nzi Exp[-a_k (rj-w)^2]
+        rs[i,1:3] i th point for calculation
+        """
+        xj = rs[:,0] - self.w[0]
+        yj = rs[:,1] - self.w[1]
+        zj = rs[:,2] - self.w[2]
+        r2j = xj**2 + yj**2 + zj**2
+
+        ns = self.ns
+        rn_ij = np.array([xj**ns[i,0]*yj**ns[i,1]*zj**ns[i,2]  for i in range(self.num)])
+        cexp_ij  = np.dot(self.coef, exp(np.outer(self.ex, r2j)))
+        return rn_ij*cexp_ij
+        
+    def at(self, cs, rs):
+        rw = [r-w for r in rs]
+        expo = exp(np.dot(rw, rw))
+        ys = []
+        for ib in range(self.num):
+            tmp = expo*cs[ib]
+            tmp *= rw[0]**self.ns[ib,0]
+            tmp *= rw[1]**self.ns[ib,1]
+            tmp *= rw[2]**self.ns[ib,2]
+            ys.append(tmp)
+        return np.array(ys)
     
 class Nucs:
     def __init__(self):
@@ -253,7 +287,29 @@ class Nshel:
     def num_basis(self):
         nn = sum([shel.num for shel in self.shels])
         return nn
+
+    def ao_at(self,rs):        
+        ys = np.zeros((self.num_basis(), len(rs[:,0])))
+        i0 = 0
+        for sh in self.shels:
+            i1 = i0 + sh.num
+            ys[i0:i1] = sh.ao_at(rs)
     
+    def at(self, cs, rs):
+        """
+        Inputs
+        ------
+        cs : [complex]
+        rs : [vector(3)]
+        """
+        i0 = 0
+        ys = np.zeros(len(rs))
+        for sh in self.shels:
+            i1 = i0 + sh.num
+            ys += sh.at(cs[i0:i1], rs)
+            i0 = i1
+        return ys
+        
 def nshel_load(j):
     
     zan = j["ian"]

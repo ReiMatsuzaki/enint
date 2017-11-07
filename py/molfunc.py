@@ -293,7 +293,7 @@ def igamma(maxm, z):
     x = z.real
     y = z.imag
     if(isinstance(z, float)):
-        return in_gamma_real(maxm, z)
+        return igamma_real(maxm, z)
     elif(isinstance(z, complex)):
         eps = 10.0**(-15)
         if(x > -eps and y > -eps):
@@ -338,7 +338,8 @@ def coef_R1(zp,wpc,m,j):
 
     if(m[0]==0 and m[1]==0 and m[2]==0):
         try:
-            return (-2*zp)**j * mole_gammainc(j,zp*dist2(wpc))
+            igs = igamma(j,zp*dist2(wpc))
+            return (-2*zp)**j * igs[j]
         except RuntimeError as e:
             raise RuntimeError("""
 failed at mole_gammainc. 
@@ -390,8 +391,9 @@ def coef_R_fast(zp,wpc,maxn):
     zwpc = zp*dist2(wpc)
 
     tmp = 1
+    igs = igamma(3*maxn,zwpc)
     for j in range(3*maxn+1):
-        rmap[0,0,0,j] = tmp * mole_gammainc(j,zwpc)
+        rmap[0,0,0,j] = tmp * igs[j]
         tmp *= (-2*zp)
 
     for nnn in range(1,3*maxn+1):
