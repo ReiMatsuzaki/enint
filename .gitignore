@@ -4,7 +4,6 @@ local.mk
 *.dat
 gamess/*
 tmp/*
-*.out
 build/*
 obj/*
 calc/*
@@ -12,7 +11,7 @@ fort.*
 *.pyc
 external/
 lib/
-*.csv
 *.o
 *.mod
 *.err
+f90/utest
