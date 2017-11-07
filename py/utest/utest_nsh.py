@@ -200,6 +200,7 @@ calc = {1}
 
         rs = np.array([[0.0,0.0,0.0], [0.3,0.0,0.0]])
         ao_rs = nshel.ao_at(rs)
+        print ao_rs
         
 class TestCnshel(TestCase):
     def test_first(self):
