@@ -18,6 +18,11 @@ def eigh_sort(h):
     return (e,u)
 
 def ijv2mat(df):
+
+    if(isinstance(df, str)):
+        df2 = pd.read_csv(df)
+        return ijv2mat(df2)
+    
     ilist = df["i"]
     jlist = df["j"]
     n = max(ilist)

@@ -372,6 +372,10 @@ class Nshel:
         return ys
         
 def nshel_load(j):
+
+    if(isinstance(j, str)):
+        js = json.load(open(j))
+        return nshel_load(js)
     
     zan = j["ian"]
     ian = j["ian"]
