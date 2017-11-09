@@ -71,6 +71,7 @@ class TestCIWfn(unittest.TestCase):
         return
     
     def test_xdip_lif(self):
+        print "aaaaaa"
         qc_root = join(enint_root, "gms/lif_casscf66/naewdy2/out")
         nel = 12
         
@@ -93,44 +94,33 @@ class TestCIWfn(unittest.TestCase):
         smo /= nel
         scsf = aij.mo2csf(smo)
         xcsf = aij.mo2csf(xmo)
+
+        self.assertAlmostEqual(1.0, scsf[0,0])
+        self.assertAlmostEqual(0.0, scsf[1,0])
         
         cci = ijv2mat(join(qc_root, "cci.csv"))
         xci = -aij.mo2ci(xmo, cci) 
         yci = -aij.mo2ci(ymo, cci)
         zci = -aij.mo2ci(zmo, cci) + 3.0*9.0/3.0
 
-        self.assertAlmostEqual(1.0, scsf[0,0])
-        self.assertAlmostEqual(0.0, scsf[1,0])
+        dm1 = aij.dm1(cci[:,0])
+        zci1_dm = -ciwfn_op1(zmo, dm1) + 3.0*9.0/3.0
+        
+        dm1 = aij.dm1(cci[:,1])
+        zci2_dm = -ciwfn_op1(zmo, dm1) + 3.0*9.0/3.0
 
-        print "calc", zci
-
-        print "ref(state1)", 0.393456*6.671265
+        print "calc1(state1)", zci[0,0]
+        print "calc2(state1)", zci1_dm
+        print "ref(state1) ", 0.393456*6.671265
+        print "calc1(state2)", zci[1,1]
+        print "calc2(state2)", zci2_dm
         print "ref(state2)", 0.393456*(-3.538234)
+
+        self.assertAlmostEqual(zci1_dm, zci[0,0])
+        self.assertAlmostEqual(zci2_dm, zci[1,1])
+
         
         return
-
-    def test_dm1(self):
-        qc_root = join(enint_root, "gms/lif_casscf66/naewdy2/out")
-        nel = 12
-        
-        nsh = nshel_load(join(qc_root, "nshel.json"))
-        nsh.setup(True)
-        zao = nsh.rmat(2)
-
-        cmo = ijv2mat(join(qc_root, "cmo.csv")) #[:,:9]
-        zmo = ao2mo(zao, cmo)
-        
-        aij = aij_load(join(qc_root, "aij.csv"), 3)
-        cci = ijv2mat(join(qc_root, "cci.csv"))
-        
-        dm1 = aij.dm1(cci[:,0])
-        zci = ciwfn_op1(zmo, dm1)
-        print "calc(state1)", -zci + 3.0*9.0/3.0
-
-        dm1 = aij.dm1(cci[:,1])
-        zci = ciwfn_op1(zmo, dm1)
-        print "calc(state2)", -zci + 3.0*9.0/3.0
-
                 
 if __name__ == '__main__':
     unittest.main()

@@ -10,7 +10,7 @@ class Aij(object):
     manage one particle coupling constant
     a_{IJ}^{ij} = <Phi_I|E_{ij}|Phi_J>
     """
-    def __init__(self, ilist, jlist, iilist, jjlist, vlist, nfrozen):
+    def __init__(self, ilist, jlist, iilist, jjlist, vlist):
         self.ilist = list(ilist)
         self.jlist = list(jlist)
         self.iilist = list(iilist)
@@ -20,13 +20,17 @@ class Aij(object):
         self.ncsf = max(iilist)
         self.nmo = max(ilist)
 
-        for i in range(1,nfrozen+1):
+        self.nfrozen = min(ilist)-1
+
+        """
+        for i in range(1,self.nfrozen+1):
             for ii in range(1,self.ncsf+1):
                 self.ilist.append(i)
                 self.jlist.append(i)
                 self.iilist.append(ii)
                 self.jjlist.append(ii)
                 self.vlist.append(2.0)
+        """
                 
         self.ilist  = np.array(self.ilist, dtype=int)
         self.jlist  = np.array(self.jlist, dtype=int)
@@ -36,6 +40,11 @@ class Aij(object):
 
     def mo2csf(self, mmo):
         mcsf=np.zeros((self.ncsf,self.ncsf))
+
+        for i in range(1,self.nfrozen+1):
+            for ii in range(1,self.ncsf+1):
+                mcsf[ii-1,ii-1] += 2*mmo[i-1,i-1]
+        
         for (i,j,ii,jj,v) in zip(self.ilist,
                                  self.jlist,
                                  self.iilist,
@@ -53,11 +62,19 @@ class Aij(object):
     def mo2ci(self, mmo, cci):
         nstate = len(cci[0,:])
         mci = np.zeros((nstate, nstate))
+
+        for i in range(1,self.nfrozen+1):
+            for ii in range(1,self.ncsf+1):
+                for n in range(nstate):
+                    for m in range(nstate):
+                        mci[n,m] += cci[ii-1,n]*cci[ii-1,m]*2*mmo[i-1,i-1]
+        
         for (i,j,ii,jj,v) in zip(self.ilist,
                                  self.jlist,
                                  self.iilist,
                                  self.jjlist,
                                  self.vlist):
+                        
             if(ii==jj and i==j):
                 for n in range(nstate):
                     for m in range(nstate):
@@ -96,6 +113,10 @@ class Aij(object):
             bcci = cci.conj()
         else:
             raise RuntimeError("invalid cci")
+
+        for i in range(1,self.nfrozen+1):
+                for ii in range(1,self.ncsf+1):
+                    dm1[i-1,i-1] += bcci[ii-1]*cci[ii-1]*2
             
         for (i,j,ii,jj,aijIJ) in zip(self.ilist,
                                  self.jlist,
@@ -121,7 +142,7 @@ def ciwfn_op1(mmo, dm1):
         
 def aij_load(fn, nfrozen):
     df = pd.read_csv(fn)
-    return Aij(df["i"], df["j"], df["I"], df["J"], df["val"], nfrozen)
+    return Aij(df["i"], df["j"], df["I"], df["J"], df["val"])
 
 def ao2mo(mao, cmo):
     """
