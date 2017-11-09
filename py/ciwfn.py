@@ -16,7 +16,9 @@ class Aij(object):
         self.iilist = list(iilist)
         self.jjlist = list(jjlist)
         self.vlist = list(vlist)
+        
         self.ncsf = max(iilist)
+        self.nmo = max(ilist)
 
         for i in range(1,nfrozen+1):
             for ii in range(1,self.ncsf+1):
@@ -31,7 +33,6 @@ class Aij(object):
         self.iilist = np.array(self.iilist, dtype=int)
         self.jjlist = np.array(self.jjlist, dtype=int)
         self.vlist  = np.array(self.vlist)
-
 
     def mo2csf(self, mmo):
         mcsf=np.zeros((self.ncsf,self.ncsf))
@@ -69,8 +70,56 @@ class Aij(object):
             else:
                 raise RuntimeError("illegal combination of i,j,I,J")
         return mci
-        
 
+    def dm1(self, cci):
+        """
+        compute one particle density matrix
+        Psi = \sum cI Phi_I  
+        where cI is CI coefficient
+
+        Inputs
+        ------
+        cci : Matrix
+        .    cci[:,n] means n th CI vector
+
+        Returns
+        -------
+        dm1 : ndarray(nmo,nmo,nci)
+        .    dm1n[:,:,n] means n th density matrix
+        """
+
+        numci = len(cci[0,:])
+        dm_list = np.zeros((self.nmo, self.nmo, numci))
+        
+        for (i,j,ii,jj,aijIJ) in zip(self.ilist,
+                                 self.jlist,
+                                 self.iilist,
+                                 self.jjlist,
+                                 self.vlist):
+            if(ii==jj and i==j):
+                for n in range(numci):                
+                    dm_list[i-1,j-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
+            elif(ii!=jj and i!=j):
+                for n in range(numci):                
+                    dm_list[i-1,j-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
+                    dm_list[j-1,i-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
+            else:
+                raise RuntimeError("illegal combination of i,j,I,J")
+        return dm_list
+
+def expval1(mmo, dm1_list):
+    """
+    compute expectation value of one particle operator
+    <Psi_n | O | Psi_n> = sum_{ij} o_ij D^n_ij
+    """
+    nmo = len(dm1_list[:,0,0])
+    num = len(dm1_list[0,0,:])
+    
+    res = np.zeros(num)
+    for n in range(num):
+        res[n] = np.sum(mmo[:nmo,:nmo]*dm1_list[:,:,n])
+    return res
+        
 def aij_load(fn, nfrozen):
     df = pd.read_csv(fn)
     return Aij(df["i"], df["j"], df["I"], df["J"], df["val"], nfrozen)

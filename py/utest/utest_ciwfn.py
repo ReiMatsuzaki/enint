@@ -43,7 +43,7 @@ class TestCIWfn(unittest.TestCase):
 
         return
 
-    def test_smat_LiH(self):
+    def _test_smat_LiH(self):
         qc_root = join(enint_root, "gms/lih/fz1/out")
         nel = 4
         
@@ -101,13 +101,32 @@ class TestCIWfn(unittest.TestCase):
         self.assertAlmostEqual(1.0, scsf[0,0])
         self.assertAlmostEqual(0.0, scsf[1,0])
 
-        print zci
+        print "calc", zci
 
-        print 0.393456*6.671265
-        print 0.393456*(-3.538234)
+        print "ref(state1)", 0.393456*6.671265
+        print "ref(state2)", 0.393456*(-3.538234)
         
-        return        
-    
+        return
+
+    def test_dm1(self):
+        qc_root = join(enint_root, "gms/lif_casscf66/naewdy2/out")
+        nel = 12
+        
+        nsh = nshel_load(join(qc_root, "nshel.json"))
+        nsh.setup(True)
+        zao = nsh.rmat(2)
+
+        cmo = ijv2mat(join(qc_root, "cmo.csv")) #[:,:9]
+        zmo = ao2mo(zao, cmo)
+        
+        aij = aij_load(join(qc_root, "aij.csv"), 3)
+        cci = ijv2mat(join(qc_root, "cci.csv"))
+        dm1 = aij.dm1(cci)
+        
+        zci = expval1(zmo, dm1)
+        print "calc(state1)", -zci[0] + 3.0*9.0/3.0
+        print "calc(state2)", -zci[1] + 3.0*9.0/3.0
+
                 
 if __name__ == '__main__':
     unittest.main()
