@@ -15,3 +15,5 @@ lib/
 *.mod
 *.err
 f90/utest
+/uscr/
+**/scr/

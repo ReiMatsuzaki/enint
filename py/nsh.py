@@ -42,7 +42,7 @@ class Shel:
         self.ns = np.array(self.ns)
         self.max_n = max([sum(n) for n in self.ns])
         
-        self.ex = ex
+        self.ex = np.array(ex)
         self.ng = len(ex)
 
         self.coef = np.zeros((self.num, self.ng))
@@ -63,14 +63,34 @@ class Shel:
         u_i(r_j) = sum_k c_k (xj-wx)^nxi (yj-wy)^nyi (zj-wz)^nzi Exp[-a_k (rj-w)^2]
         rs[i,1:3] i th point for calculation
         """
+
+        """ slow version
+        nr = len(rs[:,0])
+        res = np.zeros((self.num, nr))
+        for i in range(self.num):
+            for j in range(nr):
+                [x,y,z] = [rs[j,ir]-self.w[ir] for ir in range(3)]
+                r2 = x**2+y**2+z**2
+                tmp = 0
+                for iz in range(self.ng):
+                    tmp += (self.coef[i,iz] *
+                            x**self.ns[i,0] *
+                            y**self.ns[i,1] *
+                            z**self.ns[i,2] *
+                            exp(-self.ex[iz]*r2))
+                res[i,j] = tmp
+        return res
+        """
+        
         xj = rs[:,0] - self.w[0]
         yj = rs[:,1] - self.w[1]
         zj = rs[:,2] - self.w[2]
         r2j = xj**2 + yj**2 + zj**2
 
         ns = self.ns
-        rn_ij = np.array([xj**ns[i,0]*yj**ns[i,1]*zj**ns[i,2]  for i in range(self.num)])
-        cexp_ij  = np.dot(self.coef, exp(np.outer(self.ex, r2j)))
+        rn_ij = np.array([xj**ns[i,0]*yj**ns[i,1]*zj**ns[i,2]
+                          for i in range(self.num)])
+        cexp_ij  = np.dot(self.coef, exp(np.outer(-1.0*self.ex, r2j)))
         return rn_ij*cexp_ij
         
     def at(self, cs, rs):
@@ -155,16 +175,12 @@ class Nshel:
                         ep = np.exp(-zj*zk/zp*d2)
                         cp = ep*(np.pi/zp)**(1.5)
 
-                        ds = [ [ [ coef_d1(zp,wp[ir],wj[ir],wk[ir],nj,nk,0)
-                                   for nk in range(sk.max_n+1)]
-                                 for nj in range(sj.max_n+1)]
-                               for ir in range(3)]
-
+                        ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n,0)
                         for jj in range(sj.num):
                             for kk in range(sk.num):
                                 nj = sj.ns[jj]
                                 nk = sk.ns[kk]
-                                acc = prod([ds[ir][nj[ir]][nk[ir]]
+                                acc = prod([ds[ir, nj[ir], nk[ir], 0]
                                             for ir in range(3)])
                                 coef = cp * sj.coef[jj,jg] * sk.coef[kk,kg]
                                 j = sj.j0 + jj
@@ -271,6 +287,40 @@ class Nshel:
                                     mat[j,k] += acc*coef
         return mat                
 
+    def rmat(self, ir):
+        nn = sum([shel.num for shel in self.shels])
+        mat = np.zeros((nn,nn))
+
+        for sj in self.shels:
+            for sk in self.shels:
+                wj = sj.w
+                wk = sk.w
+                d2 = sum([x*x for x in wj-wk])                
+
+                for  jg in range(sj.ng):
+                    for  kg in range(sk.ng):
+                        zj = sj.ex[jg]
+                        zk = sk.ex[kg]
+                        zp = zj+zk
+                        wp = (zj*wj+zk*wk)/zp                        
+                        ep = np.exp(-zj*zk/zp*d2)
+                        cp = ep*(np.pi/zp)**(1.5)
+
+                        ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n+1,0)
+                        for jj in range(sj.num):
+                            for kk in range(sk.num):
+                                nj = np.copy(sj.ns[jj,:])
+                                nk = np.copy(sk.ns[kk,:])
+                                acc0 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
+                                nk[ir] += 1
+                                acc1 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
+                                acc = acc1 + wk[ir]*acc0
+                                coef = cp * sj.coef[jj,jg] * sk.coef[kk,kg]
+                                j = sj.j0 + jj
+                                k = sk.j0 + kk
+                                mat[j,k] += acc*coef
+        return mat
+        
     def eri(self):
         pass
                 
@@ -288,12 +338,22 @@ class Nshel:
         nn = sum([shel.num for shel in self.shels])
         return nn
 
-    def ao_at(self,rs):        
-        ys = np.zeros((self.num_basis(), len(rs[:,0])))
+    def ao_at(self,rs):
+        if(not isinstance(rs,np.ndarray)):
+            raise RuntimeError("rs must be np.ndarray")
+        rs_shape = rs.shape
+        if(len(rs_shape)!=2):
+            raise RuntimeError("rs must be matrix")
+        (nr,nd) = rs_shape
+        if(nd!=3):
+            raise RuntimeError("len(rs[0,:]) must be 3")
+        
+        ys = np.zeros((self.num_basis(), nr))
         i0 = 0
         for sh in self.shels:
             i1 = i0 + sh.num
             ys[i0:i1] = sh.ao_at(rs)
+            i0 = i1
         return ys
     
     def at(self, cs, rs):

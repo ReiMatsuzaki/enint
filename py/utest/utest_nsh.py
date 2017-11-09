@@ -135,8 +135,26 @@ calc = {1}
         calc = nshel.vmat()
         ref = gtomat(gs, op_na(nucs.ws[0])) + 0.3*gtomat(gs, op_na(nucs.ws[1]))
         self.assertMatProp("hermite", calc)
-        self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")   
+        self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")
+        
+    def test_nshel_rmat(self):
+        nucs = Nucs()
+        ia1 = nucs.add_atom([0.1,0.2,0.3], 1, 1.0)
+        ia2 = nucs.add_atom([0.0,0.0,0.0], 2, 2.0)
+        nshel = Nshel(nucs)
+        nshel.add_shel("s", [1.2], {0:[1.4]}, ia1)
+        nshel.add_shel("s", [1.1], {0:[1.3]}, ia2)
+        nshel.add_shel("p", [1.1], {1:[1.3]}, ia2)
+        nshel.setup(False)
 
+        xmat = nshel.rmat(0)
+        smat = nshel.smat()
+
+        self.assertAlmostEqual(0.0, xmat[1,1])
+        self.assertAlmostEqual(smat[0,2], xmat[0,1])
+
+        self.assertMatProp("hermite", xmat)
+        
     def test_nshel_h2(self):
         out = "../../gms/h2/out"
         with open(os.path.join(out, "nshel.json")) as f:
@@ -188,19 +206,25 @@ calc = {1}
 
     def test_ao_at(self):
         nucs = Nucs()
+        d = 1.0
         ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)
-        ia2 = nucs.add_atom([1.0,0.0,0.0], 2, 0.3)
+        ia2 = nucs.add_atom([d,0.0,0.0], 2, 0.3)
         
         nshel = Nshel(nucs)
-        nshel.add_shel("s", [1.1],   {0:[1.0]}, ia1)
-        nshel.add_shel("p", [1.3],   {1:[1.0]}, ia2)
+        nshel.add_shel("s",   [1.1],   {0:[1.0]}, ia1)
+        nshel.add_shel("p",   [1.3],   {1:[1.0]}, ia2)
         nshel.add_shel("dxx", [1.2], {2: [1.0]}, ia2)
         
         nshel.setup(True)
-
-        rs = np.array([[0.2,0.1,0.2], [1.3,0.1,-0.1]])
+        
+        rs = np.array([[0.0,0.0,0.0], [1.3,0.1,-0.1]])
         ao_rs = nshel.ao_at(rs)
-        print ao_rs
+        self.assertAlmostEqual(nshel.shels[0].coef[0,0], ao_rs[0,0])
+        self.assertAlmostEqual(-nshel.shels[1].coef[0,0]*d*exp(-1.3*d*d), ao_rs[1,0])
+        self.assertAlmostEqual(0.0, ao_rs[2,0])
+        self.assertAlmostEqual(0.0, ao_rs[3,0])
+        self.assertAlmostEqual(nshel.shels[2].coef[0,0]*d**2*exp(-1.2*d*d),
+                               ao_rs[4,0])
         
 class TestCnshel(TestCase):
     def test_first(self):
