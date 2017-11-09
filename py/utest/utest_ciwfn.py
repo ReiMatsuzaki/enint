@@ -16,10 +16,11 @@ from enint.math import ijv2mat
 enint_root = os.path.abspath("../../")
 
 class TestCIWfn(unittest.TestCase):
-    def _test_smat_h2(self):
+    def test_smat_h2(self):
         #qc_root = join(enint_root, "gms/lif_casscf66/naewdy2/out")
         qc_root = join(enint_root, "gms/h2/out")
         nel = 2
+        nfrozen = 0
         
         nsh = nshel_load(join(qc_root, "nshel.json"))
         nsh.setup(True)
@@ -30,7 +31,7 @@ class TestCIWfn(unittest.TestCase):
         self.assertAlmostEqual(1.0, smo[0,0])
         self.assertAlmostEqual(0.0, smo[1,0])
         
-        aij = aij_load(join(qc_root, "aij.csv"))
+        aij = aij_load(join(qc_root, "aij.csv"), nfrozen=0)
         smo /= nel
         scsf = aij.mo2csf(smo)
         self.assertAlmostEqual(1.0, scsf[0,0])
@@ -43,7 +44,7 @@ class TestCIWfn(unittest.TestCase):
 
         return
 
-    def _test_smat_LiH(self):
+    def test_smat_LiH(self):
         qc_root = join(enint_root, "gms/lih/fz1/out")
         nel = 4
         
@@ -121,11 +122,14 @@ class TestCIWfn(unittest.TestCase):
         
         aij = aij_load(join(qc_root, "aij.csv"), 3)
         cci = ijv2mat(join(qc_root, "cci.csv"))
-        dm1 = aij.dm1(cci)
         
-        zci = expval1(zmo, dm1)
-        print "calc(state1)", -zci[0] + 3.0*9.0/3.0
-        print "calc(state2)", -zci[1] + 3.0*9.0/3.0
+        dm1 = aij.dm1(cci[:,0])
+        zci = ciwfn_op1(zmo, dm1)
+        print "calc(state1)", -zci + 3.0*9.0/3.0
+
+        dm1 = aij.dm1(cci[:,1])
+        zci = ciwfn_op1(zmo, dm1)
+        print "calc(state2)", -zci + 3.0*9.0/3.0
 
                 
 if __name__ == '__main__':

@@ -80,45 +80,44 @@ class Aij(object):
         Inputs
         ------
         cci : Matrix
-        .    cci[:,n] means n th CI vector
+        .    cci[:] means n th CI vector
 
         Returns
         -------
         dm1 : ndarray(nmo,nmo,nci)
-        .    dm1n[:,:,n] means n th density matrix
+        .    dm1n[:,:] means n th density matrix
         """
 
-        numci = len(cci[0,:])
-        dm_list = np.zeros((self.nmo, self.nmo, numci))
-        
+        dm1 = np.zeros((self.nmo, self.nmo))
+
+        if(isinstance(cci[0], float)):
+            bcci = cci
+        elif(isinstance(cci[0], complex)):
+            bcci = cci.conj()
+        else:
+            raise RuntimeError("invalid cci")
+            
         for (i,j,ii,jj,aijIJ) in zip(self.ilist,
                                  self.jlist,
                                  self.iilist,
                                  self.jjlist,
                                  self.vlist):
             if(ii==jj and i==j):
-                for n in range(numci):                
-                    dm_list[i-1,j-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
+                dm1[i-1,j-1] += bcci[ii-1]*cci[jj-1]*aijIJ
             elif(ii!=jj and i!=j):
-                for n in range(numci):                
-                    dm_list[i-1,j-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
-                    dm_list[j-1,i-1,n] += cci[ii-1,n]*cci[jj-1,n]*aijIJ
+                dm1[i-1,j-1] += bcci[ii-1]*cci[jj-1]*aijIJ
+                dm1[j-1,i-1] += bcci[ii-1]*cci[jj-1]*aijIJ
             else:
                 raise RuntimeError("illegal combination of i,j,I,J")
-        return dm_list
+        return dm1
 
-def expval1(mmo, dm1_list):
+def ciwfn_op1(mmo, dm1):
     """
     compute expectation value of one particle operator
     <Psi_n | O | Psi_n> = sum_{ij} o_ij D^n_ij
     """
-    nmo = len(dm1_list[:,0,0])
-    num = len(dm1_list[0,0,:])
-    
-    res = np.zeros(num)
-    for n in range(num):
-        res[n] = np.sum(mmo[:nmo,:nmo]*dm1_list[:,:,n])
-    return res
+    nmo = len(dm1[:,0])
+    return np.sum(mmo[:nmo,:nmo]*dm1[:,:])
         
 def aij_load(fn, nfrozen):
     df = pd.read_csv(fn)
@@ -143,3 +142,9 @@ def ao2mo(mao, cmo):
 
 
 
+def rho_mo(psi_ao, cmo):
+    psi_mo = np.dot(tr(cmo), psi_ao) 
+    rho_mo = psi_mo[np.newaxis, :, :] * psi_mo[:, np.newaxis, :]
+    return rho_mo
+
+    
