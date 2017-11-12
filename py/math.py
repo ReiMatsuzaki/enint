@@ -17,6 +17,63 @@ def eigh_sort(h):
     u = np.transpose(np.array([ui for (ei,ui) in eu_list]))
     return (e,u)
 
+def ijkv2ten(df):
+    
+    if(isinstance(df, str)):
+        df2 = pd.read_csv(df)
+        return ijv2mat(df2)
+    
+    ilist = df["i"]
+    jlist = df["j"]
+    klist = df["j"]
+    ni = max(ilist)
+    nj = max(jlist)
+    nk = max(klist)
+    
+    if("val" in df):
+        vlist = df["val"]
+        dtype = float
+    elif("re" in df and "im" in df):
+        vlist = df["re"] + 1.0j * df["im"]
+        dtype = complex
+
+    ten = np.zeros((ni,nj,nk), dtype=dtype)
+    for (i,j,k,v) in zip(ilist,jlist,klist,vlist):
+        ten[i-1,j-1,k-1]=v
+    return ten
+
+def ten2ijkv(x, eps=None):
+    (ni,nj,nk) = np.shape(x)
+    ilist = []
+    jlist = []
+    klist = []
+    vlist = []
+    idx = 0
+    for i in range(ni):
+        for j in range(nj):
+            for k in range(nk):
+                if(eps==None):
+                    non0 = True
+                else:
+                    non0 = (abs(x[i,j,k])>eps)
+                if(non0):
+                    ilist.append(i+1)
+                    jlist.append(j+1)
+                    klist.append(k+1)
+                    vlist.append(x[i,j,k])
+                
+    i = np.array(ilist)
+    j = np.array(jlist)
+    k = np.array(klist)    
+    v = np.array(vlist)    
+    if(isinstance(x[0,0,0], complex)):
+        df = pd.DataFrame({"i":i, "j":j, "k":k, "re":v.real, "im":v.imag},
+                          columns=["i","j","k","re","im"])
+    else:
+        df = pd.DataFrame({"i":i, "j":j, "k":k, "val":v},
+                          columns=["i","j","k","val"])        
+    return df
+
 def ijv2mat(df):
 
     if(isinstance(df, str)):
@@ -69,6 +126,11 @@ def mat2ijv(x, eps=None):
     return df
 
 def iv2vec(df):
+
+    if(isinstance(df, str)):
+        df2 = pd.read_csv(df)
+        return iv2vec(df2)
+    
     ilist = df["i"]
     n = max(ilist)
     if("val" in df):        
@@ -107,6 +169,7 @@ if __name__ == '__main__':
     df = mat2ijv(x)
     y = ijv2mat(df)
     print sum(abs(y-x))
+
 
 
 def hdot(x, y):

@@ -59,7 +59,7 @@ b[i,j] = {3}
 
     
 class TestNsh(TestCase):
-    def test_dz(self):
+    def _test_dz(self):
         
         g1 = GTO([1.5, 0.3], [1.0, 0.8], [0.0,0.0,0.0], [2,0,0], True)
     
@@ -77,8 +77,32 @@ class TestNsh(TestCase):
         ref = (gtoele(g1,op_s(),gp) - gtoele(g1,op_s(),gm))/(2*dx)
         calc = gtoele(g1, op_dw(2), g0)
         self.assertAlmostEqual(ref, calc, 5)
+        
+    def _test_dz2(self):
 
-    def test_igamma(self):
+        ex = [1.3, 0.5]
+        cs = [0.8, 0.4]
+        r  = np.array([0.0, 0.0, 1.1])
+        dx = 0.001
+        dr = np.array([0.0, 0.0, dx])
+        
+        nucs = Nucs()
+        nucs.add_atom([0.0,0.0,0.0],  1, 1.0)
+        nucs.add_atom(r, 2, 1.0)
+        nucs.add_atom(r+dr, 2, 1.0)
+        nucs.add_atom(r-dr, 2, 1.0)
+        nsh = Nshel(nucs)
+        nsh.add_shel("dxx", [1.5, 0.3], {2:[1.0, 0.8]}, 0)
+        nsh.add_shel("dzz", ex, {2:cs}, 1)
+        nsh.add_shel("dzz", ex, {2:cs}, 2)
+        nsh.add_shel("dzz", ex, {2:cs}, 3)
+        
+        nsh.setup(True)
+        ref   = (nsh.smat()[0,2]-nsh.smat()[0,3])/(2*dx)
+        calc  = nsh.dwmat(2)[0,1]        
+        self.assertAlmostEqual(ref, calc, 7)
+        
+    def _test_igamma(self):
         from scipy import integrate
         import numpy as np
 
@@ -94,7 +118,7 @@ calc = {1}
 |ref-calc| = {4}
 (m,z) = ({2},{3})""".format(ref,calc,m,z,abs(ref-calc)))
                     
-    def test_coef_R(self):
+    def _test_coef_R(self):
         wp = np.array([0.0, 0.1, 0.2])
         wc = np.array([0.2, 0.3, 0.4])
         wpc = wp-wc
@@ -112,15 +136,29 @@ calc = {1}
     def test_nshel(self):
 
         nucs = Nucs()
+        
         ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)
-        ia2 = nucs.add_atom([1.0,0.0,0.0], 2, 0.3)
+        ia2 = nucs.add_atom([1.0,0.0,0.0], 2, 0.3)        
+        
         nshel = Nshel(nucs)
         nshel.add_shel("s", [1.1],   {0:[1.0]}, ia1)
         nshel.add_shel("p", [1.3],   {1:[1.0]}, ia2)
         nshel.add_shel("dxx", [1.2], {2: [1.0]}, ia2)
+
+        self.assertEqual(ia1, nshel.shels[0].ia)
+        self.assertEqual(ia2, nshel.shels[1].ia)
+        self.assertEqual(ia2, nshel.shels[2].ia)
         
         nshel.setup(True)
         gs = nshel.to_gtos()
+
+        ref  = np.array([ia1,ia2,ia2,ia2,ia2])
+        calc = nshel.ia_vec()
+        self.assertEqual(ref[0], calc[0])
+        self.assertEqual(ref[1], calc[1])
+        self.assertEqual(ref[2], calc[2])
+        self.assertEqual(ref[3], calc[3])
+        self.assertEqual(ref[4], calc[4])
         
         calc = nshel.smat()
         ref = gtomat(gs, op_s())
@@ -137,7 +175,7 @@ calc = {1}
         self.assertMatProp("hermite", calc)
         self.assertMatEqual(ref, calc, msg="test_nshel.Check Nuclear Attraction")
         
-    def test_nshel_rmat(self):
+    def _test_nshel_rmat(self):
         nucs = Nucs()
         ia1 = nucs.add_atom([0.1,0.2,0.3], 1, 1.0)
         ia2 = nucs.add_atom([0.0,0.0,0.0], 2, 2.0)
@@ -155,7 +193,7 @@ calc = {1}
 
         self.assertMatProp("hermite", xmat)
         
-    def test_nshel_h2(self):
+    def _test_nshel_h2(self):
         out = "../../gms/h2/out"
         with open(os.path.join(out, "nshel.json")) as f:
             j = json.load(f)
@@ -177,7 +215,7 @@ calc = {1}
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_nshel_h2. H core matrix")        
         
-    def test_nshel_gms(self):
+    def _test_nshel_gms(self):
         out = "../../gms/hcp/out"
 
         with open(join(out, "nshel.json")) as f:
@@ -204,7 +242,7 @@ calc = {1}
         ref  = ijv2mat(df)
         self.assertMatEqual(ref, calc, msg="test_neshl_gms. H core")        
 
-    def test_ao_at(self):
+    def _test_ao_at(self):
         nucs = Nucs()
         d = 1.0
         ia1 = nucs.add_atom([0.0,0.0,0.0], 1, 1.0)

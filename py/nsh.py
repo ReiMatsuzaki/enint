@@ -13,7 +13,7 @@ class Shel:
     coef[i,1:ng] : coefficient of i th basis
     w[1:3]       : location of shell
     """
-    def __init__(self, ntypes, ex, coef_l, w):
+    def __init__(self, ntypes, ex, coef_l, nucs, ia):
 
         if(isinstance(ntypes, str)):
             ntypes = [ntypes]
@@ -29,6 +29,8 @@ class Shel:
             self.ns.append([0,0,1])
         if("dxx" in ntypes):
             self.ns.append([2,0,0])
+        if("dzz" in ntypes):
+            self.ns.append([0,0,2])            
         if("d" in ntypes):
             self.ns.append([2,0,0])
             self.ns.append([0,2,0])
@@ -54,7 +56,8 @@ class Shel:
         if((self.num, self.ng) != self.coef.shape):
             raise RuntimeError("size mismatch")
 
-        self.w = np.array(w)
+        self.w = np.array(nucs.ws[ia])
+        self.ia = ia
 
         self.j0 = 0
 
@@ -139,7 +142,7 @@ class Nshel:
         return line
             
     def add_shel(self,ntypes,ex,coef,ia):
-        self.shels.append(Shel(ntypes,ex,coef,self.nucs.ws[ia]))
+        self.shels.append(Shel(ntypes,ex,coef,self.nucs,ia))
         
     def setup(self, normalize=True):
         jn = 0
@@ -320,6 +323,44 @@ class Nshel:
                                 k = sk.j0 + kk
                                 mat[j,k] += acc*coef
         return mat
+
+    def dwmat(self, ir):
+        nn = sum([shel.num for shel in self.shels])
+        mat = np.zeros((nn,nn))
+
+        for sj in self.shels:
+            for sk in self.shels:
+                wj = sj.w
+                wk = sk.w
+                d2 = sum([x*x for x in wj-wk])                
+
+                for  jg in range(sj.ng):
+                    for  kg in range(sk.ng):
+                        zj = sj.ex[jg]
+                        zk = sk.ex[kg]
+                        zp = zj+zk
+                        wp = (zj*wj+zk*wk)/zp                        
+                        ep = np.exp(-zj*zk/zp*d2)
+                        cp = ep*(np.pi/zp)**(1.5)
+
+                        ds = coef_d(zp,wp,wj,wk,sj.max_n,sk.max_n+1,0)
+                        for jj in range(sj.num):
+                            for kk in range(sk.num):
+                                nj = np.copy(sj.ns[jj,:])
+                                nk = np.copy(sk.ns[kk,:])
+                                nk[ir] += 1
+                                acc0 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
+                                if(sk.ns[kk,ir]>1):
+                                    nk[ir] -= 2
+                                    acc1 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
+                                else:
+                                    acc1 = 0
+                                acc = 2*zk*acc0 - sk.ns[kk,ir]*acc1
+                                coef = cp * sj.coef[jj,jg] * sk.coef[kk,kg]
+                                j = sj.j0 + jj
+                                k = sk.j0 + kk
+                                mat[j,k] += acc*coef
+        return mat
         
     def eri(self):
         pass
@@ -370,7 +411,15 @@ class Nshel:
             ys += sh.at(cs[i0:i1], rs)
             i0 = i1
         return ys
-        
+
+    def ia_vec(self):
+        vec = np.zeros((self.num_basis()), dtype=int)
+        for sj in self.shels:
+            for j in range(sj.num):
+                jj = sj.j0+j
+                vec[jj] = sj.ia
+        return vec
+
 def nshel_load(j):
 
     if(isinstance(j, str)):

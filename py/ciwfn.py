@@ -88,7 +88,7 @@ class Aij(object):
                 raise RuntimeError("illegal combination of i,j,I,J")
         return mci
 
-    def dm1(self, cci):
+    def dm1(self, in_bcci, in_kcci):
         """
         compute one particle density matrix
         Psi = \sum cI Phi_I  
@@ -103,20 +103,22 @@ class Aij(object):
         -------
         dm1 : ndarray(nmo,nmo,nci)
         .    dm1n[:,:] means n th density matrix
-        """
+        """        
 
-        dm1 = np.zeros((self.nmo, self.nmo))
-
-        if(isinstance(cci[0], float)):
-            bcci = cci
-        elif(isinstance(cci[0], complex)):
-            bcci = cci.conj()
+        if(isinstance(in_kcci[0], float)):
+            kcci = in_kcci
+            bcci = in_bcci
+            dm1 = np.zeros((self.nmo, self.nmo))
+        elif(isinstance(in_kcci[0], complex)):
+            kcci = in_kcci
+            bcci = in_bcci.conj()
+            dm1 = np.zeros((self.nmo, self.nmo), dtype=complex)
         else:
             raise RuntimeError("invalid cci")
 
         for i in range(1,self.nfrozen+1):
                 for ii in range(1,self.ncsf+1):
-                    dm1[i-1,i-1] += bcci[ii-1]*cci[ii-1]*2
+                    dm1[i-1,i-1] += bcci[ii-1]*kcci[ii-1]*2
             
         for (i,j,ii,jj,aijIJ) in zip(self.ilist,
                                  self.jlist,
@@ -124,10 +126,10 @@ class Aij(object):
                                  self.jjlist,
                                  self.vlist):
             if(ii==jj and i==j):
-                dm1[i-1,j-1] += bcci[ii-1]*cci[jj-1]*aijIJ
+                dm1[i-1,j-1] += bcci[ii-1]*kcci[jj-1]*aijIJ
             elif(ii!=jj and i!=j):
-                dm1[i-1,j-1] += bcci[ii-1]*cci[jj-1]*aijIJ
-                dm1[j-1,i-1] += bcci[ii-1]*cci[jj-1]*aijIJ
+                dm1[i-1,j-1] += bcci[ii-1]*kcci[jj-1]*aijIJ
+                dm1[j-1,i-1] += bcci[ii-1]*kcci[jj-1]*aijIJ
             else:
                 raise RuntimeError("illegal combination of i,j,I,J")
         return dm1
@@ -140,7 +142,7 @@ def ciwfn_op1(mmo, dm1):
     nmo = len(dm1[:,0])
     return np.sum(mmo[:nmo,:nmo]*dm1[:,:])
         
-def aij_load(fn, nfrozen):
+def aij_load(fn):
     df = pd.read_csv(fn)
     return Aij(df["i"], df["j"], df["I"], df["J"], df["val"])
 
@@ -159,9 +161,6 @@ def ao2mo(mao, cmo):
     .     MO represented matrix
     """
     return dot(tr(cmo), dot(mao, cmo))
-
-
-
 
 def rho_mo(psi_ao, cmo):
     psi_mo = np.dot(tr(cmo), psi_ao) 

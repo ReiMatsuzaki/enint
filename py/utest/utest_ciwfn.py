@@ -31,7 +31,7 @@ class TestCIWfn(unittest.TestCase):
         self.assertAlmostEqual(1.0, smo[0,0])
         self.assertAlmostEqual(0.0, smo[1,0])
         
-        aij = aij_load(join(qc_root, "aij.csv"), nfrozen=0)
+        aij = aij_load(join(qc_root, "aij.csv"))
         smo /= nel
         scsf = aij.mo2csf(smo)
         self.assertAlmostEqual(1.0, scsf[0,0])
@@ -57,7 +57,7 @@ class TestCIWfn(unittest.TestCase):
         self.assertAlmostEqual(1.0, smo[0,0])
         self.assertAlmostEqual(0.0, smo[1,0])
         
-        aij = aij_load(join(qc_root, "aij.csv"), 1)
+        aij = aij_load(join(qc_root, "aij.csv"))
         smo /= nel
         scsf = aij.mo2csf(smo)
         self.assertAlmostEqual(1.0, scsf[0,0])
@@ -90,7 +90,7 @@ class TestCIWfn(unittest.TestCase):
         self.assertAlmostEqual(1.0, smo[0,0])
         self.assertAlmostEqual(0.0, smo[1,0])
         
-        aij = aij_load(join(qc_root, "aij.csv"), 3)
+        aij = aij_load(join(qc_root, "aij.csv"))
         smo /= nel
         scsf = aij.mo2csf(smo)
         xcsf = aij.mo2csf(xmo)
