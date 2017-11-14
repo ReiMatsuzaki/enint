@@ -26,7 +26,7 @@ contains
 
     select case(runtype)
     case("na_rs")
-       call na_rs; check_err()
+       call na_rs_run; check_err()
     case default
        throw_err("unsupported",1)
     end select
@@ -35,7 +35,7 @@ contains
   ! compute electron nuclear interaction matrix when
   ! electron part is represented by GTO and
   ! nuclear part is represented by DVR
-  subroutine na_rs
+  subroutine na_rs_run
     double precision, allocatable :: v(:,:)
     integer :: num, a, i, j, iargc
     type(Obj_Nshel) :: nshel
@@ -93,7 +93,23 @@ contains
     call Timer_delete()
     call ErrHandle_delete()
     
-  end subroutine na_rs
+  end subroutine na_rs_run
+  ! -- AO grid representation --
+  subroutine AOGrid_run
+    use Mod_fjson
+    character(100) :: fn_nshel, line
+
+    if(iargc()<4) then
+       begin_err(1)
+       call print_help
+       end_err()
+    end if
+
+    call getarg(2, fn_nshel)
+    write(*,*) "nshel json file:", fn_nshel
+    call getarg(3, line)
+    
+  end subroutine AOGrid_run
   subroutine print_help()
     write(0,*) "argument is necessary"
     write(0,*) "endvr runtype nshel.json rs.dat mat.dat"

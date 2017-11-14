@@ -48,7 +48,7 @@ contains
     integer, intent(in) :: n_dr(3)
     FIELD, intent(out) :: res(:,:)
     integer :: nj, n_mu, j, mu, ig, ir, ird
-    FIELD, allocatable :: rj(:,:), r2j(:)
+    FIELD, allocatable :: rj(:,:), r2j(:), exp_ig_j(:,:)
     FIELD :: tmp1, tmp2
 
     nj = size(rs, 1)
@@ -60,6 +60,13 @@ contains
        rj(j,:) = rs(j,:) - this%w(:)
        r2j(j) = sum(rj(j,:)**2)
     end do
+
+    allocate(exp_ig_j(this%ng, nj))
+    do j = 1, nj
+       do ig = 1, this%ng
+          exp_ig_j(ig,j) = exp(-this%zeta(ig)*r2j(j))
+       end do
+    end do
     
     if(all(n_dr==0)) then
        do j = 1, nj
@@ -70,7 +77,7 @@ contains
              end do
              tmp2 = 0
              do ig = 1, this%ng
-                tmp2 = tmp2 + this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+                tmp2 = tmp2 + this%coef(mu,ig) * exp_ig_j(ig,j)
              end do
              res(mu,j) = tmp1*tmp2
           end do
@@ -85,8 +92,7 @@ contains
              end do
              tmp2 = 0
              do ig = 1, this%ng
-                tmp2 = tmp2 &
-                     -2*this%zeta(ig)* this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+                tmp2 = tmp2 -2*this%zeta(ig)* this%coef(mu,ig) * exp_ig_j(ig,j)
              end do
              res(mu,j) = tmp1*tmp2
              
@@ -97,7 +103,7 @@ contains
                 end do
                 tmp2 = 0
                 do ig = 1, this%ng
-                   tmp2 = tmp2 + this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+                   tmp2 = tmp2 + this%coef(mu,ig) * exp_ig_j(ig,j)
                 end do
                 res(mu,j) = res(mu,j) + tmp1*tmp2
              end if
