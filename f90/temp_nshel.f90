@@ -19,6 +19,7 @@ module Mod_Shel
      integer, allocatable :: ns(:,:) ! ns(i,:) = (nx,ny,nz) for i th basis
      integer :: ng, num, maxn
      FIELD :: w(3)
+     integer :: ia ! index of atom
   end type Obj_Shel
 contains
   subroutine Shel_new(this, ng, num)
@@ -289,6 +290,7 @@ contains
     
     this%shels(js)%maxn = maxval(this%shels(js)%ns(:,:))
     this%shels(js)%w(:) = this%nucs%ws(ia,:)
+    this%shels(js)%ia = ia
     
   end subroutine Nshel_set
   subroutine Nshel_setup(this, in_normalize)
@@ -512,11 +514,16 @@ contains
   subroutine Nshel_r(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    integer, intent(in) :: ir
     FIELD :: mat(:,:,:)
-    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), i, j, k
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ir, jr
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    FIELD :: d(3,0:5,0:5,0:10), acc, coef
+    FIELD :: d(3,0:5,0:5,0:10), coef, acc, acc0, acc1
+    integer :: one(3,3)
+    
+    one = 0
+    do ir = 1, 3
+       one(ir,ir) = 1
+    end do
 
     mat = 0
     do js = 1, this%num
@@ -542,16 +549,19 @@ contains
                 do kk = 1, this%shels(ks)%num                      
                    nj(:) = this%shels(js)%ns(jj,:)
                    nk(:) = this%shels(ks)%ns(kk,:)
-                   nk(ir) = nk(ir) + 1
-                   acc = 1
-                   do i = 1, 3
-                      acc = acc * d(i,nj(i),nk(i),0)
+
+                   acc0 = 1; acc1 = 1
+                   do jr = 1, 3
+                      acc0 = acc0 * d(ir,nj(jr),nk(jr),0)
+                      acc1 = acc1 * d(ir,nj(jr),nk(jr)+one(ir,jr),0)
                    end do
+                   acc = acc1 + wk(ir)*acc0
+                   
                    coef = cp * this%shels(js)%coef(jj,jg) &
                         * this%shels(ks)%coef(kk,kg)
                    j = this%j0s(js) + jj
                    k = this%j0s(ks) + kk
-                   mat(ir,j,k) = mat(j,k) + coef*acc
+                   mat(ir,j,k) = mat(ir,j,k) + coef*acc
                 end do                   
                 end do
                 end do
@@ -560,14 +570,19 @@ contains
        end do
     end do    
   end subroutine Nshel_r
-  subroutine Nshel_d(this, mat)
+  subroutine Nshel_dw(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
-    integer, intent(in) :: ir
     FIELD :: mat(:,:,:)
-    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), i, j, k
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ir, jr
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    FIELD :: d(3,0:5,0:5,0:10), acc, coef
+    FIELD :: d(3,0:5,0:5,0:10), acc, acc0, acc1, coef
+    integer :: one(3,3)
+
+    one = 0
+    do ir = 1, 3
+       one(ir,ir) = 1
+    end do
 
     mat = 0
     do js = 1, this%num
@@ -593,16 +608,25 @@ contains
                 do kk = 1, this%shels(ks)%num                      
                    nj(:) = this%shels(js)%ns(jj,:)
                    nk(:) = this%shels(ks)%ns(kk,:)
-                   nk(ir) = nk(ir) + 1
-                   acc = -2*zk*&
-                        d(1,nj(1),nk(1),0)*d(2,nj(2),nk(2),0)*d(3,nj(3),nk(3),0)
-                   nk(ir) = nk(ir) - 2
-                   acc = acc + (nk(ir)-1) * &
-                        d(1,nj(1),nk(1),0)*d(2,nj(2),nk(2),0)*d(3,nj(3),nk(3),0)
+                   acc0 = -2*zk
+                   do jr = 1, 3
+                      acc = acc * d(ir,nj(jr),nk(jr)+one(ir,jr),0)
+                   end do
+                   if(nk(ir)>0) then
+                      acc1 = nk(ir)
+                      do jr = 1, 3
+                         acc1 = acc1 * d(jr,nj(jr),nk(jr)-one(ir,jr),0)
+                      end do
+                   else
+                      acc1 = 0
+                   end if
+                   acc = acc0 + acc1
+                   
                    coef = cp* this%shels(js)%coef(jj,jg) * this%shels(ks)%coef(kk,kg)
                    j = this%j0s(js) + jj
                    k = this%j0s(ks) + kk
-                   mat(ir,j,k) = mat(j,k) + coef*acc
+                   
+                   mat(ir,j,k) = mat(ir,j,k) + coef*acc
                 end do                   
                 end do
                 end do
@@ -610,7 +634,7 @@ contains
           end do
        end do
     end do        
-  end subroutine Nshel_d
+  end subroutine Nshel_dw
   subroutine Nshel_eri(this, eri)
     use Mod_Molfunc, only : coef_d
     use Mod_const, only : pi
@@ -691,6 +715,33 @@ contains
     end do
  
   end subroutine Nshel_eri
+  subroutine Nshel_vec_ia(this, vec_ia)
+    type(Obj_Nshel) :: this
+    integer, intent(out) :: vec_ia(:)
+    integer :: num_basis, js ,j, jj
+
+    call Nshel_num_basis(this, num_basis)
+    if(size(vec_ia) < num_basis) then
+       throw_err("not enough size", 1)
+    end if
+
+    do js = 1, this%num
+       do jj = 1, this%shels(js)%num
+          j = this%j0s(js) + jj
+          vec_ia(j) = this%shels(js)%ia
+       end do
+    end do
+    
+  end subroutine Nshel_vec_ia
+  subroutine Nshel_num_basis(this, num)
+    type(Obj_Nshel) :: this
+    integer, intent(out) :: num
+    integer :: js
+    num = 0
+    do js = 1, this%num
+       num = num + this%shels(js)%num
+    end do
+  end subroutine Nshel_num_basis
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)

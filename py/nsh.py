@@ -61,7 +61,7 @@ class Shel:
 
         self.j0 = 0
 
-    def ao_at(self, rs):
+    def ao_at(self, rs, n_dr=[0,0,0], method=0):
         """
         u_i(r_j) = sum_k c_k (xj-wx)^nxi (yj-wy)^nyi (zj-wz)^nzi Exp[-a_k (rj-w)^2]
         rs[i,1:3] i th point for calculation
@@ -84,17 +84,47 @@ class Shel:
                 res[i,j] = tmp
         return res
         """
-        
-        xj = rs[:,0] - self.w[0]
-        yj = rs[:,1] - self.w[1]
-        zj = rs[:,2] - self.w[2]
-        r2j = xj**2 + yj**2 + zj**2
 
         ns = self.ns
-        rn_ij = np.array([xj**ns[i,0]*yj**ns[i,1]*zj**ns[i,2]
-                          for i in range(self.num)])
-        cexp_ij  = np.dot(self.coef, exp(np.outer(-1.0*self.ex, r2j)))
-        return rn_ij*cexp_ij
+        l = np.newaxis        
+        
+        if(method==0):
+            if(n_dr!=[0,0,0]):
+                raise RuntimeError("not impl")
+            
+            xj = rs[:,0] - self.w[0]
+            yj = rs[:,1] - self.w[1]
+            zj = rs[:,2] - self.w[2]
+            r2j = xj**2 + yj**2 + zj**2
+            rn_ij = np.array([
+                xj**ns[i,0] * yj**ns[i,1] * zj**ns[i,2]
+                for i in range(self.num)])
+            cexp_ij  = np.dot(self.coef, exp(np.outer(-1.0*self.ex, r2j)))
+            return rn_ij*cexp_ij
+        
+        rj = rs[:,:] - self.w[l,:]
+        r2j = np.add.reduce(rj[:,:]**2, axis=1)
+
+        if(n_dr==[0,0,0]):
+            rn_ij = np.multiply.reduce(rj[l,:,:]**ns[:,l,:], axis=2)
+            cexp_ij  = np.dot(self.coef, exp(np.outer(-1.0*self.ex, r2j)))
+            return rn_ij*cexp_ij
+            
+        elif(sum(n_dr)==1):
+            n_dr = np.array(n_dr)
+            nx = ns[:,:]*n_dr[l,:]
+            ns_m = ns[:,:] - n_dr[l,:]
+            ns_p = ns[:,:] + n_dr[l,:]
+            print "nx:", nx
+            print "rj:", rj
+            print "ns_m:", ns_m
+            rn_ij_m = np.multiply.reduce(nx[:,l,:]*rj[l,:,:]**ns_m[:,l,:], axis=2)
+            rn_ij_p = np.multiply.reduce(rj[l,:,:]**ns_p[:,l,:], axis=2)
+            cexp_ij = np.dot(self.coef, exp(-1.0*self.ex[:,l]*r2j[l,:]))
+            dexp_ij = np.dot(self.coef,
+                             -2*self.ex[:,l]*exp(-1.0*self.ex[:,l]*r2j[l,:]))
+            return rn_ij_m*cexp_ij + rn_ij_p*dexp_ij
+            raise RuntimeError("not impl")
         
     def at(self, cs, rs):
         rw = [r-w for r in rs]
@@ -126,6 +156,7 @@ class Nshel:
     def __init__(self, nucs):
         self.shels = []
         self.nucs = nucs
+        self.setupq = False
 
     def __str__(self):
         line = "jshel  w   n  ex  coef   \n"
@@ -150,6 +181,7 @@ class Nshel:
             shel.j0 = jn
             jn += shel.num
 
+        self.setupq = True
         if(normalize):
             s = self.smat()
             idx = -1
@@ -158,9 +190,12 @@ class Nshel:
                 for jj in range(shel.num):
                     idx += 1
                     shel.coef[jj,:] = coef_old[jj,:]/np.sqrt(s[idx,idx])
-    
+                    
     def smat(self):
-        nn = sum([shel.num for shel in self.shels])
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+        
+        nn = self.num_basis()
         mat = np.zeros((nn,nn))
 
         for sj in self.shels:
@@ -192,7 +227,10 @@ class Nshel:
         return mat
     
     def tmat(self):
-        nn = sum([shel.num for shel in self.shels])
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+        
+        nn = self.num_basis()
         mat = np.zeros((nn,nn))
 
         for sj in self.shels:
@@ -241,11 +279,13 @@ class Nshel:
         return mat        
         
     def vmat(self, nucs=None):
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+        nn = self.num_basis()
+        mat = np.zeros((nn,nn))
+        
         if(nucs==None):
             nucs = self.nucs
-            
-        nn = sum([shel.num for shel in self.shels])
-        mat = np.zeros((nn,nn))
 
         for sj in self.shels:
             for sk in self.shels:
@@ -291,7 +331,9 @@ class Nshel:
         return mat                
 
     def rmat(self, ir):
-        nn = sum([shel.num for shel in self.shels])
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+        nn = self.num_basis()
         mat = np.zeros((nn,nn))
 
         for sj in self.shels:
@@ -325,7 +367,9 @@ class Nshel:
         return mat
 
     def dwmat(self, ir):
-        nn = sum([shel.num for shel in self.shels])
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+        nn = self.num_basis()
         mat = np.zeros((nn,nn))
 
         for sj in self.shels:
@@ -350,7 +394,7 @@ class Nshel:
                                 nk = np.copy(sk.ns[kk,:])
                                 nk[ir] += 1
                                 acc0 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
-                                if(sk.ns[kk,ir]>1):
+                                if(sk.ns[kk,ir]>0):
                                     nk[ir] -= 2
                                     acc1 = prod([ds[i,nj[i],nk[i],0] for i in range(3)])
                                 else:
@@ -366,6 +410,9 @@ class Nshel:
         pass
                 
     def to_gtos(self):
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
+
         gtos = []
         for shel in self.shels:            
             for jn in range(shel.num):
@@ -379,7 +426,9 @@ class Nshel:
         nn = sum([shel.num for shel in self.shels])
         return nn
 
-    def ao_at(self,rs):
+    def ao_at(self,rs,n_dr=[0,0,0], method=0):
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
         if(not isinstance(rs,np.ndarray)):
             raise RuntimeError("rs must be np.ndarray")
         rs_shape = rs.shape
@@ -393,7 +442,7 @@ class Nshel:
         i0 = 0
         for sh in self.shels:
             i1 = i0 + sh.num
-            ys[i0:i1] = sh.ao_at(rs)
+            ys[i0:i1] = sh.ao_at(rs,n_dr=n_dr,method=method)
             i0 = i1
         return ys
     
@@ -404,6 +453,8 @@ class Nshel:
         cs : [complex]
         rs : [vector(3)]
         """
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
         i0 = 0
         ys = np.zeros(len(rs))
         for sh in self.shels:
@@ -413,6 +464,8 @@ class Nshel:
         return ys
 
     def ia_vec(self):
+        if(not self.setupq):
+            raise RuntimeError("call setup first")
         vec = np.zeros((self.num_basis()), dtype=int)
         for sj in self.shels:
             for j in range(sj.num):

@@ -47,7 +47,7 @@ contains
     call Nshel_delete(nshel); check_err()
 
   end subroutine test_smat
-  subroutine test_h2()    
+  subroutine test_h2()
     use Mod_math
     integer :: ifile = 12323
     double precision, allocatable :: calc(:,:), ref(:,:), v(:,:)
