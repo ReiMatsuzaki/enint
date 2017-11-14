@@ -50,6 +50,7 @@ contains
     else
        write(*,'("[ FAILED  ] ", A, "  (", f10.5, " ms)")') sub_title_, t*1000
     end if
+    get_err() = 0
   end subroutine Utest_sub_end
   subroutine utest_check_begin
     num_utest = num_utest + 1

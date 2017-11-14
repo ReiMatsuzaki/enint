@@ -15,7 +15,7 @@ module Mod_Shel
   implicit none
   type Obj_Shel
      FIELD, allocatable :: zeta(:)
-     FIELD, allocatable :: coef(:,:)
+     FIELD, allocatable :: coef(:,:) ! coef(mu,ig) 
      integer, allocatable :: ns(:,:) ! ns(i,:) = (nx,ny,nz) for i th basis
      integer :: ng, num, maxn
      FIELD :: w(3)
@@ -39,6 +39,75 @@ contains
     this % w(:) = 0
     
   end subroutine Shel_new
+  subroutine Shel_ao_at(this, rs, n_dr, res)
+    ! compute grid represented AO.
+    ! j  : grid index
+    ! mu : AO index
+    type(Obj_Shel) :: this
+    FIELD, intent(in) :: rs(:,:)
+    integer, intent(in) :: n_dr(3)
+    FIELD, intent(out) :: res(:,:)
+    integer :: nj, n_mu, j, mu, ig, ir, ird
+    FIELD, allocatable :: rj(:,:), r2j(:)
+    FIELD :: tmp1, tmp2
+
+    nj = size(rs, 1)
+    n_mu = this%num
+    allocate(rj(      nj, 3))
+    allocate(r2j(     nj    ))
+
+    do j = 1, nj
+       rj(j,:) = rs(j,:) - this%w(:)
+       r2j(j) = sum(rj(j,:)**2)
+    end do
+    
+    if(all(n_dr==0)) then
+       do j = 1, nj
+          do mu = 1, n_mu
+             tmp1 = 1
+             do ir = 1, 3
+                tmp1 = tmp1 * rj(j,ir)**this%ns(mu,ir)
+             end do
+             tmp2 = 0
+             do ig = 1, this%ng
+                tmp2 = tmp2 + this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+             end do
+             res(mu,j) = tmp1*tmp2
+          end do
+       end do
+    else if(sum(n_dr)==1) then
+       ird = sum(n_dr*(/1,2,3/))
+       do j = 1, nj
+          do mu = 1, n_mu
+             tmp1 = 1
+             do ir = 1, 3
+                tmp1 = tmp1 * rj(j,ir)**(this%ns(mu,ir) + n_dr(ir))
+             end do
+             tmp2 = 0
+             do ig = 1, this%ng
+                tmp2 = tmp2 &
+                     -2*this%zeta(ig)* this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+             end do
+             res(mu,j) = tmp1*tmp2
+             
+             if(this%ns(mu,ird)>0) then
+                tmp1 = this%ns(mu,ird)
+                do ir = 1, 3
+                   tmp1 = tmp1 * rj(j,ir)**(this%ns(mu,ir) - n_dr(ir))
+                end do
+                tmp2 = 0
+                do ig = 1, this%ng
+                   tmp2 = tmp2 + this%coef(mu,ig) * exp(-this%zeta(ig)*r2j(j))
+                end do
+                res(mu,j) = res(mu,j) + tmp1*tmp2
+             end if
+          end do
+       end do
+    else
+       throw_err("not impl", 1)
+    end if
+    
+  end subroutine Shel_ao_at
   subroutine Shel_delete(this)
     type(Obj_Shel) :: this
     deallocate(this%zeta, this%coef, this%ns)
@@ -67,7 +136,6 @@ contains
   end subroutine Nucs_delete
 end module Mod_Nucs
 
-
 Module Mod_Nshel
   use Mod_ErrHandle
   use Mod_Shel
@@ -80,6 +148,7 @@ Module Mod_Nshel
      integer, allocatable :: j0s(:)
      type(Obj_Nucs) :: nucs
      integer :: nbasis
+     logical :: setupq
   end type Obj_Nshel
 contains
   subroutine Nshel_new(this, natom, num)
@@ -91,6 +160,7 @@ contains
     call Nucs_new(this%nucs, natom); check_err()
 
     this%j0s(:) = -1
+    this%setupq = .false.
     
   end subroutine Nshel_new
   subroutine Nshel_new_json(this, o)
@@ -313,6 +383,9 @@ contains
     else
        normalize = .true.
     end if
+
+    this%setupq = .true.
+    
     if(normalize) then
        allocate(smat(this%nbasis, this%nbasis))
        call Nshel_s(this, smat); check_err()
@@ -323,6 +396,8 @@ contains
           end do
        end do
     end if
+
+    
     
   end subroutine Nshel_setup
   subroutine Nshel_s(this, mat)
@@ -333,6 +408,8 @@ contains
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
     FIELD :: d(3,0:5,0:5,0:10), acc, coef
 
+    call check_setup(this); check_err()
+    
     mat = 0
     do js = 1, this%num
        do ks = 1, this%num    
@@ -379,8 +456,10 @@ contains
     FIELD :: mat(:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), ir, jr, j, k, nkp(3)
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    FIELD :: acc, coef, cum
+    FIELD :: acc, coef, cum    
     FIELD, allocatable :: d(:,:,:,:)
+
+    call check_setup(this); check_err()
 
     allocate(d(1:3, 0:10, 0:10, 0:0))
     
@@ -456,6 +535,8 @@ contains
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), wpc(3), ep, ccp, q
     FIELD :: d(3,0:5,0:5,0:10), acc, coef, cr(0:10,0:10,0:10)
 
+    call check_setup(this); check_err()
+    
     mat = 0
     do js = 1, this%num
        do ks = 1, this%num    
@@ -519,6 +600,8 @@ contains
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
     FIELD :: d(3,0:5,0:5,0:10), coef, acc, acc0, acc1
     integer :: one(3,3)
+
+    call check_setup(this); check_err()
     
     one = 0
     do ir = 1, 3
@@ -579,6 +662,8 @@ contains
     FIELD :: d(3,0:5,0:5,0:10), acc, acc0, acc1, coef
     integer :: one(3,3)
 
+    call check_setup(this); check_err()
+    
     one = 0
     do ir = 1, 3
        one(ir,ir) = 1
@@ -646,6 +731,9 @@ contains
     FIELD :: acc, cpp, coef, zi, zj, zk, zl, zij, zkl, eij, ekl
     FIELD :: wi(3), wj(3), wk(3), wl(3), wij(3), wkl(3), dij, dkl
     FIELD :: cdij(3,0:5,0:5,0:10), cdkl(3,0:5,0:5,0:10), cr(0:10,0:10,0:10)
+
+    call check_setup(this); check_err()
+    
     eri = 0
     do is = 1, this%num
     do js = 1, this%num
@@ -737,11 +825,36 @@ contains
     type(Obj_Nshel) :: this
     integer, intent(out) :: num
     integer :: js
+    
     num = 0
     do js = 1, this%num
        num = num + this%shels(js)%num
     end do
   end subroutine Nshel_num_basis
+  subroutine check_setup(this)
+    type(Obj_Nshel)::this
+    if(.not. this%setupq) then
+       throw_err("this object is not setup. call Nshel_setup first", 1)
+    end if
+  end subroutine check_setup
+  subroutine Nshel_ao_at(this, rs, n_dr, res)
+    type(Obj_Nshel) :: this
+    double precision, intent(in) :: rs(:,:)
+    integer, intent(in) :: n_dr(3)
+    double precision, intent(out) :: res(:,:)
+
+    integer mu0, mu1, ish
+    
+    call check_setup(this); check_err()
+
+    mu0 = 1
+    do ish = 1, this%num
+       mu1 = mu0 + this%shels(ish)%num
+       call Shel_ao_at(this%shels(ish), rs, n_dr, res(mu0:mu1-1,:)); check_err()
+       mu0 = mu1
+    end do
+    
+  end subroutine Nshel_ao_at
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)

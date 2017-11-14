@@ -14,6 +14,14 @@ contains
     call test_smat()
     call Utest_sub_end()
 
+    call Utest_sub_begin("ao_at")
+    call test_ao_at()
+    call Utest_sub_end()
+
+    call Utest_sub_begin("ao_at_d")
+    call test_ao_at_d()
+    call Utest_sub_end()        
+
     call Utest_sub_begin("h2")
     call test_h2()
     call Utest_sub_end()
@@ -47,6 +55,102 @@ contains
     call Nshel_delete(nshel); check_err()
 
   end subroutine test_smat
+  subroutine test_ao_at()
+    
+    type(Obj_Nshel) nshel
+    double precision :: coef_l(0:3,20)
+    double precision :: rs(2,3)
+    double precision, allocatable :: ao_rs(:,:)
+    integer :: num_basis
+    double precision :: ref, d
+
+    d = 1.2d0
+
+    call Nshel_new(nshel, 2, 3); check_err()
+    nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
+    nshel%nucs%ws(2,:) = d*(/1.0d0,0.0d0,0.0d0/);
+    nshel%nucs%zs(:)   = (/1.0d0, 0.3d0/)
+    coef_l = 0
+    coef_l(0,1) = 1.0d0
+    coef_l(1,1) = 1.0d0
+    coef_l(2,1) = 1.0d0
+    call Nshel_set(nshel, 1, (/"s"/),   1, (/1.1d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 2, (/"p"/),   1, (/1.3d0/), coef_l, 2); check_err()
+    call Nshel_set(nshel, 3, (/"d"/), 1, (/1.2d0/), coef_l, 2); check_err()
+    call Nshel_setup(nshel, .true.); check_err()
+    
+    rs = reshape((/0.0d0, 1.3d0, &
+         0.0d0, 0.1d0, &
+         0.0d0, -0.1d0/), (/2,3/))
+    call Nshel_num_basis(nshel, num_basis); check_err()
+    allocate(ao_rs(num_basis, size(rs,1)))
+    call Nshel_ao_at(nshel, rs, (/0,0,0/), ao_rs(:,:)); check_err()
+
+    call expect_eq(nshel%shels(1)%coef(1,1), ao_rs(1,1)); check_err()
+    
+    ref = -nshel%shels(2)%coef(1,1)*d*exp(-1.3d0*d**2)
+    call expect_eq(ref, ao_rs(2,1)); check_err()
+
+    call expect_eq(0.0d0, ao_rs(3,1))
+    call expect_eq(0.0d0, ao_rs(4,1))
+
+    ref = nshel%shels(3)%coef(1,1) * d**2 * exp(-1.2d0*d*d)    
+    call expect_eq(ref, ao_rs(5,1))
+    
+  end subroutine test_ao_at
+  subroutine test_ao_at_d()
+    type(Obj_Nshel) nshel
+    double precision :: coef_l(0:3,20)
+    integer :: num_basis, mu
+    double precision :: rs(7,3), r0(3), dx, ref
+    double precision, allocatable :: phi(:,:), phi_x(:,:), phi_y(:,:), phi_z(:,:)
+
+    dx = 0.001d0
+
+    call Nshel_new(nshel, 1, 3); check_err()
+    nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
+    coef_l = 0
+    coef_l(0,1) = 1.0d0
+    coef_l(1,1) = 1.0d0
+    coef_l(2,1) = 1.0d0
+    call Nshel_set(nshel, 1, (/"s"/), 1, (/1.1d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 2, (/"p"/), 1, (/1.3d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 3, (/"d"/), 1, (/1.2d0/), coef_l, 1); check_err()
+    call Nshel_setup(nshel, .true.); check_err()
+
+    r0 = (/0.3d0, 0.2d0, 0.1d0/)
+    rs(1,:) = r0
+    rs(2,:) = r0 + dx * (/1.0d0, 0.0d0, 0.0d0/)
+    rs(3,:) = r0 - dx * (/1.0d0, 0.0d0, 0.0d0/)
+    rs(4,:) = r0 + dx * (/0.0d0, 1.0d0, 0.0d0/)
+    rs(5,:) = r0 - dx * (/0.0d0, 1.0d0, 0.0d0/)
+    rs(6,:) = r0 + dx * (/0.0d0, 0.0d0, 1.0d0/)
+    rs(7,:) = r0 - dx * (/0.0d0, 0.0d0, 1.0d0/)
+
+    call Nshel_num_basis(nshel, num_basis)
+    allocate(phi(  num_basis, size(rs, 1)))
+    allocate(phi_x(num_basis, size(rs, 1)))
+    allocate(phi_y(num_basis, size(rs, 1)))
+    allocate(phi_z(num_basis, size(rs, 1)))
+    call Nshel_ao_at(nshel, rs(:,:), (/0,0,0/), phi(  :,:)); check_err()
+    call Nshel_ao_at(nshel, rs(:,:), (/1,0,0/), phi_x(:,:)); check_err()
+    call Nshel_ao_at(nshel, rs(:,:), (/0,1,0/), phi_y(:,:)); check_err()
+    call Nshel_ao_at(nshel, rs(:,:), (/0,0,1/), phi_z(:,:)); check_err()
+
+    do mu = 1, num_basis
+       ref = (phi(mu,2)-phi(mu,3))/(2*dx)
+       call expect_near(ref, phi_x(mu, 1), 1.0d-5); check_err()
+       ref = (phi(mu,4)-phi(mu,5))/(2*dx)
+       call expect_near(ref, phi_y(mu, 1), 1.0d-5); check_err()
+       ref = (phi(mu,6)-phi(mu,7))/(2*dx)
+       call expect_near(ref, phi_z(mu, 1), 1.0d-5)
+       if(get_err() .ne. 0) then
+          write(0,*) "mu:", mu
+          return
+       end if       
+    end do
+        
+  end subroutine test_ao_at_d
   subroutine test_h2()
     use Mod_math
     integer :: ifile = 12323
