@@ -43,7 +43,7 @@ module mod_fjson_parser
   integer, parameter :: TOKEN_BEGIN_OBJ=9
   integer, parameter :: TOKEN_BOOL=10
   
-  integer, parameter :: MAX_ELE=1000
+  integer, parameter :: MAX_ELE=10000
 
   type(token), save ::  tokens(MAX_ELE)
   integer, private :: ie
@@ -1472,7 +1472,8 @@ contains
        call loader_error(ie)
        end_err()
     end select
-    if(ie_out_tmp>1000) then
+    ! 10000 is equal to MAX_ELE in fjson_parser
+    if(ie_out_tmp>10000) then
        begin_err(1)
        write(0,*) "out_ie out of range"
        write(0,*) "token:", tokens(ie) % type
@@ -1488,7 +1489,7 @@ contains
     
   end subroutine load_value
   recursive subroutine load_num(in_ie, out_ie, v)
-    use Mod_math, only : is_i, is_d, convert_i, convert_d
+    use Mod_StrUtil, only : is_i, is_d, convert_i, convert_d
     integer in_ie, out_ie, ie
     type(value) v
     logical res_i, res_d    

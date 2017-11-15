@@ -12,14 +12,14 @@ module Mod_ArgParser
   type(object) :: args_  
 contains
   subroutine arg_parse_i(name, x)
-    use Mod_math, only : convert_i
+    use Mod_StrUtil, only : convert_i
     character(*), intent(in) :: name
     integer, intent(out) :: x
     integer i, num
     character(100) :: ele
     num = iargc()
     do i = 1, num
-       call getarg(i, ele)
+       call getarg(i, ele)       
        if(name.eq.ele) then
           call getarg(i+1, ele)
           call convert_i(ele, x)
@@ -29,7 +29,7 @@ contains
     throw_err("failed to find option", 1)
   end subroutine arg_parse_i
   subroutine arg_parse_d(name, x)
-    use Mod_math, only : convert_d
+    use Mod_StrUtil, only : convert_d
     character(*), intent(in) :: name
     double precision, intent(out) :: x
     integer i, num
@@ -59,10 +59,13 @@ contains
           return
        end if
     end do
-    throw_err("failed to find option", 1)
+    begin_err(1)
+    write(0,*) "failed to find option"
+    write(0,*) "name:", name
+    end_err()
   end subroutine arg_parse_s
   subroutine arg_parse_dvec(name, xs)
-    use Mod_math, only : convert_d
+    use Mod_StrUtil, only : convert_d
     character(*), intent(in) :: name
     double precision, intent(out) :: xs(:)
     integer i, num, j
@@ -106,7 +109,7 @@ contains
     
   end subroutine ArgParser_add
   subroutine ArgParser_parse(o)
-    use Mod_math, only : is_i, convert_i, convert_d
+    use Mod_StrUtil, only : is_i, convert_i, convert_d
     type(object) :: o
     integer :: narg
     integer :: iarg, idx, num, itype, j, vali

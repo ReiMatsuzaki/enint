@@ -27,6 +27,15 @@ clean:
 	rm -f *.o
 	rm -f *.mod
 
+# ==== utest(StrUtil) ====
+TARGET=utest_strutil
+MODULES=${MODS0} utest strutil ${TARGET}
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_strutil: ${OBJS}
+	${FC} ${FF} $^ -o $@ -cpp  -llapack -lblas
+check_strutil: ${BUILD}/utest_strutil
+	${BUILD}/utest_strutil
+
 # ==== utest(ArgParser) ====
 TARGET=utest_argparser
 MODULES=${MODS0} utest argparser ${TARGET}
@@ -56,11 +65,15 @@ check_molfunc: ${BUILD}/utest_molfunc
 
 # ==== Enint ====
 TARGET=enint
-MODULES=${MODS0} nshel ${TARGET}
+MODULES=${MODS0} strutil argparser rmolfunc rnshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
 ${BUILD}/${TARGET}: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
-check_${TARGET}: ${BUILD}/${TARGET}
+check_nars: ${BUILD}/${TARGET}
 	${BUILD}/${TARGET} na_rs ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
+check_grid: ${BUILD}/${TARGET}
+	${BUILD}/${TARGET} grid -x linspace,0.0,5.0,6 -y scalar,0.0 -z scalar,0.0 -o utest/xyz.csv
+check_aogrid: ${BUILD}/${TARGET} check_grid
+	${BUILD}/${TARGET} ao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/hcp/out/nshel.json -t 000
 
 
