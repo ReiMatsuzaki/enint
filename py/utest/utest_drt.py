@@ -23,7 +23,7 @@ check definition of modify upward indexing. replation with level i.
 
 drt = DRT(4,0,4)
 drt.show('down')
-print
+#print
 drt.show('up')
 
 ds = np.zeros((4+1,2), dtype=int)
@@ -33,6 +33,6 @@ ds[1,0] = 3
 ds[2,1] = 2
 ds[1,1] = 1
 
-drt.loop1(6, 13, ds)
+drt.loop1(7, 14, ds)
 
 
