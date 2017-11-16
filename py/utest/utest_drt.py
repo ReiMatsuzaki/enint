@@ -15,17 +15,24 @@ u_kdj : Upward chaining indexies
 u_ydj : Upward arc weight
 u_xj  : Upward node weight
 
-more simple code!
-see Shavitt .ppt
+adaptation with fortran index
+
+check definition of modify upward indexing. replation with level i.
+
 """
 
 drt = DRT(4,0,4)
-drt.show('up')
+drt.show('down')
 print
-drt.show('low')
+drt.show('up')
 
-ds = np.zeros(4+1)
-ds[4] = 3
-ds[3] = 0
-#print drt.get_j(ds, 2)
+ds = np.zeros((4+1,2), dtype=int)
+ds[:] = -1
+ds[2,0] = 0
+ds[1,0] = 3
+ds[2,1] = 2
+ds[1,1] = 1
+
+drt.loop1(6, 13, ds)
+
 

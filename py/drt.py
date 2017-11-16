@@ -93,11 +93,7 @@ class DRT(object):
         pre = DRT_pre(N,S,norbs)
         self.sort(pre)
         self.calc_weight()
-        self.nwks = self.uxj[self.nj-1]
-
-        self.uxj2lxj = np.zeros(self.nwks+1)
-        for j in range(self.nj):
-            self.uxj2lxj[self.uxj[j]] = self.lxj[j]
+        self.nwks = self.xj[self.nj-1]        
 
     def sort(self, pre):
         norbs = self.norbs
@@ -133,7 +129,16 @@ class DRT(object):
         self.kj[j,:] = -1
         self.nj = self.j1[0]+1
 
-    def calc_weight(self):
+        self.u_kj = np.zeros((nj, 4), dtype=int)
+        self.u_kj[:,:] = -1
+        for i in range(norbs):
+            for j_ip in range(self.j0[i+1], self.j1[i+1]+1):
+                for d in range(4):
+                    if(self.kj[j_ip, d] != -1):
+                        self.u_kj[self.kj[j_ip,d],d] = j_ip
+
+    def calc_weight_old(self):
+        
         self.uxj = np.zeros(self.nj, dtype=int)        
         self.uxj[0] = 1
         for i in range(self.norbs, 0, -1):
@@ -180,7 +185,47 @@ class DRT(object):
                     else:
                         self.lyj[j,d] = -1
         self.lyj[self.nj-1,:] = -1
-                        
+
+    def calc_weight(self):
+        self.ydj = np.zeros((self.nj, 4), dtype=int)
+        self.xj  = np.zeros(self.nj, dtype=int)
+        self.xj[-1] = 1
+        for i in range(self.norbs+1):
+            for j in range(self.j0[i], self.j1[i]+1):
+                dd = -1
+                for d in range(4):
+                    if(self.kj[j,d] == -1):
+                        self.ydj[j,d] = -1
+                    else:
+                        if(dd == -1):
+                            self.ydj[j,d] = 0                            
+                            dd = d
+                        else:
+                            self.ydj[j,d] = self.ydj[j,dd] + self.xj[self.kj[j,dd]]
+                            dd = d
+                if(dd!=-1):
+                    self.xj[j] = self.ydj[j,dd] + self.xj[self.kj[j,dd]]
+
+
+        self.u_ydj = np.zeros((self.nj, 4), dtype=int)
+        self.u_xj  = np.zeros(self.nj, dtype=int)
+        self.u_xj[0] = 1
+        for i in range(self.norbs, -1, -1):
+            for j in range(self.j0[i], self.j1[i]+1):
+                dd = -1
+                for d in range(4):
+                    if(self.u_kj[j,d] == -1):
+                        self.u_ydj[j,d] = -1
+                    else:
+                        if(dd == -1):
+                            self.u_ydj[j,d] = 0
+                        else:
+                            self.u_ydj[j,d] = (self.u_ydj[j,dd] +
+                                               self.u_xj[self.u_kj[j,dd]])
+                        dd = d
+                if(dd!=-1):
+                    self.u_xj[j] = self.u_ydj[j,dd] + self.u_xj[self.u_kj[j,dd]]
+                            
     def build_1e_mat(self, m):
         pass
         """
@@ -215,6 +260,54 @@ class DRT(object):
             if(self.j0[i] <= j_tail and j_tail <= self.j1[i]):
                 i_tail = i
 
+        last_uwk = np.zeros(self.norbs+1, dtype=int)
+        last_uwk[:] = -1
+        j = j_head
+        for i in range(i_head, self.norbs):
+            for d in range(4):
+                if(self.u_kj[j,d]!=-1):
+                    last_uwk[i+1] = d
+                    j = self.u_kj[j,d]
+                    break
+        print last_uwk
+
+        first_lwk = np.zeros(self.norbs+1, dtype=int)
+        first_lwk[:] = -1
+        j = j_tail
+        for i in range(i_tail, 0, -1):
+            for d in range(4):
+                if(self.kj[j,d]!=-1):
+                    first_lwk[i] = d
+                    j = self.kj[j,d]
+                    break
+        print first_lwk
+        ket_wk = (list(first_lwk[0:i_tail]) +
+                  list(ds_loop[i_tail:i_head+1,1]) +
+                  list(last_uwk[i_head+1:]))
+        bra_wk = (list(first_lwk[0:i_tail]) +
+                  list(ds_loop[i_tail:i_head+1,0]) +
+                  list(last_uwk[i_head+1:]))
+        print bra_wk
+        print ket_wk
+        j = 0
+        ibra = 0
+        for i in range(self.norbs,0,-1):
+            d = bra_wk[i]
+            ibra += self.ydj[j,d]
+            j = self.kj[j,d]
+        print ibra
+
+        j = 0
+        iket = 0
+        for i in range(self.norbs,0,-1):
+            d = ket_wk[i]
+            iket += self.ydj[j,d]
+            j = self.kj[j,d]
+        print iket
+
+        for nl in range(self.xj[j_tail]):
+            "compute iket and ibra with upward"
+                
         """
         ds_last_uwk = np.zeros(self.norbs-i_head, dtype=int)
         for i in range(self.norbs, i_head-1, -1):
@@ -222,24 +315,23 @@ class DRT(object):
                 if(self.kj)
         """
             
-    def show(self, l_or_u = "up"):
-        if(l_or_u == "up"):
-            print "   i  |   j  |  aj  bj  cj | k0j k1j k2j k3j |  uxj   uyj"
-        elif(l_or_u == "low"):
-            print "   i  |   j  |  aj  bj  cj | k0j k1j k2j k3j |  lxj   lyj"
+    def show(self, up_or_down = "down"):
+        
+        print "   i  |   j  |  aj  bj  cj | k0j k1j k2j k3j |  xj   ydj"
         print "------+------+-------------+-----------------+----------------------"
         for i in range(self.norbs, -1, -1):
             j0 = self.j0[i]
             j1 = self.j1[i]
             for j in range(j0, j1+1):
-                [a,b,c] = self.abcj[j,:]
-                [k0,k1,k2,k3] = map(replace_if(-1,"  -"), self.kj[j,:])
-                if(l_or_u == "up"):
-                    [y0,y1,y2,y3] = map(replace_if(-1,"  -"), self.uyj[j,:])
-                    xj = self.uxj[j]
-                elif(l_or_u == "low"):
-                    [y0,y1,y2,y3] = map(replace_if(-1,"  -"), self.lyj[j,:])
-                    xj = self.lxj[j]
+                [a,b,c] = self.abcj[j,:]                
+                if(up_or_down == "down"):
+                    [k0,k1,k2,k3] = map(replace_if(-1,"  -"), self.kj[j,:])
+                    [y0,y1,y2,y3] = map(replace_if(-1,"  -"), self.ydj[j,:])
+                    xj = self.xj[j]
+                elif(up_or_down == "up"):
+                    [k0,k1,k2,k3] = map(replace_if(-1,"  -"), self.u_kj[j,:])
+                    [y0,y1,y2,y3] = map(replace_if(-1,"  -"), self.u_ydj[j,:])
+                    xj = self.u_xj[j]
                 if(j==j0):
                     line = " {0:3}  |".format(i)
                 else:
