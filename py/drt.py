@@ -89,8 +89,14 @@ class DRT(object):
         self.N = N
         self.S = S
         self.norbs = norbs
-        pre = DRT_pre(N,S,norbs)
         
+        pre = DRT_pre(N,S,norbs)
+        self.sort(pre)
+        self.index_from_head()
+        self.index_from_tail()
+
+    def sort(self, pre):
+        norbs = self.norbs
         nj = 0
         for i in range(norbs+1):
             nj += len(pre.jabc[i])
@@ -121,10 +127,31 @@ class DRT(object):
         self.j1[0] = self.j0[0]
         self.abcj[j,:] = 0
         self.kj[j,:] = -1
+        self.nj = self.j1[0]+1
 
+    def index_from_head(self):
+        self.wj = np.zeros(self.nj, dtype=int)
+        self.wj[0] = 1
+        for i in range(self.norbs, 0, -1):
+            for j_i in range(self.j0[i],self.j1[i]+1):
+                for d in range(4):
+                    j_im = self.kj[j_i,d]
+                    if(j_im != -1):
+                        self.wj[j_im] += self.wj[j_i]
+
+    def index_from_tail(self):
+        self.vj = np.zeros(self.nj, dtype=int)
+        self.vj[-1] = 1
+        for i in range(self.norbs):
+            for j_ip in range(self.j0[i+1], self.j1[i+1]+1):
+                for d in range(4):
+                    j_i = self.kj[j_ip,d]
+                    if(j_i != -1):
+                        self.vj[j_ip] += self.vj[j_i]
+        
     def show(self):
-        print "   i  |   j  |  aj  bj  cj | k0j k1j k2j k3j"
-        print "------+------+-------------+------------------"
+        print "   i  |   j  |  aj  bj  cj | k0j k1j k2j k3j |  wj   vj"
+        print "------+------+-------------+-----------------+----------"
         for i in range(self.norbs, -1, -1):
             j0 = self.j0[i]
             j1 = self.j1[i]
@@ -135,9 +162,9 @@ class DRT(object):
                     line = " {0:3}  |".format(i)
                 else:
                     line = "      |"
-                line += " {0:3}  | {1:3} {2:3} {3:3} | {4:3} {5:3} {6:3} {7:3}" 
-                print line.format(j, a, b, c, k0, k1, k2, k3)
-        print "------+------+-------------+------------------"
+                line += " {0:3}  | {1:3} {2:3} {3:3} | {4:3} {5:3} {6:3} {7:3} | {8:3}  {9:3}" 
+                print line.format(j, a, b, c, k0, k1, k2, k3, self.wj[j],self.vj[j])
+        print "------+------+-------------+-----------------|----------"
                 
 class DRij(object):
     def __init__(self, a, b, c):
