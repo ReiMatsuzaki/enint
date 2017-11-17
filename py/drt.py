@@ -296,3 +296,24 @@ class DRT(object):
                                   y0, y1, y2, y3)
         print "------+------+-------------+-----------------|---------------------"
                 
+
+class DistinctRowi(object):
+    def __init__(self, j0, j1, jtable, abctable):
+        self.j0 = j0
+        self.j1 = j1        
+        self.jtable = jtable
+        self.abctable = abctable
+        nj = j1-j0+1
+        self.nj = nj
+        self.j = np.array(range(j0,j1+1))
+        self.abcj = np.zeros((nj,3), dtype=int)
+        self.kdj  = np.zeros((nj,4), dtype=int)
+
+    def next_j0j1(self):
+        for idx in range(self.nj):
+            j = self.j[idx]
+            [a,b,c] = self.abcj[idx,:]
+            kdj = self.kdj[idx,:]
+            
+
+            
