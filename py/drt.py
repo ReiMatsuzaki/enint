@@ -4,7 +4,7 @@ da = [0,0,1,1]
 db = [0,1,-1,0]
 dc = [1,0,1,0]
 nanval = -1
-def make_abc_table(N,S,norbs):
+def make_jabc_table(N,S,norbs):
     na = 1+N/2
     nb = 1+2*S+norbs
     nc = 1+norbs
@@ -43,7 +43,7 @@ def calc_k(a, b, c, j):
     
 class DRT_pre(object):
     def __init__(self, N, S, norbs):
-        (self.abc_table, self.jabc_table) = make_abc_table(N,S,norbs)
+        (self.abc_table, self.jabc_table) = make_jabc_table(N,S,norbs)
         self.N = N
         self.S = S
         self.norbs = norbs

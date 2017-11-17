@@ -2,7 +2,7 @@ include ../local.mk
 
 # ==== Common ====
 FF:=${FF}
-MODS0=err_handle timer const math istream fjson
+MODS0=err_handle timer const math strutil istream fjson
 
 # -- Directories --
 SRC=${NAEWDY_PATH}/src
@@ -62,6 +62,14 @@ ${BUILD}/utest_molfunc: ${OBJS}
 	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
 check_molfunc: ${BUILD}/utest_molfunc
 	${BUILD}/utest_molfunc
+
+# ==== utest(DRT) ====
+MODULES=${MODS0} utest drt utest_drt
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_drt: ${OBJS}
+	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
+check_drt: ${BUILD}/utest_drt
+	${BUILD}/utest_drt
 
 # ==== Enint ====
 TARGET=enint
