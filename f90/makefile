@@ -71,6 +71,14 @@ ${BUILD}/utest_drt: ${OBJS}
 check_drt: ${BUILD}/utest_drt
 	${BUILD}/utest_drt
 
+# ==== utest(Det) ====
+MODULES=${MODS0} utest det utest_det
+OBJS=$(addsuffix .o, ${MODULES})
+${BUILD}/utest_det: ${OBJS}
+	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
+check_det: ${BUILD}/utest_det
+	${BUILD}/utest_det
+
 # ==== Enint ====
 TARGET=enint
 MODULES=${MODS0} strutil argparser rmolfunc rnshel ${TARGET}
