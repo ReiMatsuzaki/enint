@@ -110,17 +110,26 @@ contains
     integer, parameter :: ifile = 411
     
     call arg_parse_s("-x", line); check_err()
-    call str2vec(line, nx, xs, .false.); check_err()
+    call str2vec(line, nx, xs, .false.)
+    if(get_err().ne.0) then
+       throw_err("error on converting -x", 1)
+    end if
     allocate(xs(nx))
     call str2vec(line, nx, xs, .true.); check_err()
 
     call arg_parse_s("-y", line); check_err()
     call str2vec(line, ny, ys, .false.); check_err()
+    if(get_err().ne.0) then
+       throw_err("error on converting -y", 1)
+    end if
     allocate(ys(ny))
     call str2vec(line, ny, ys, .true.); check_err()
 
     call arg_parse_s("-z", line); check_err()
     call str2vec(line, nz, zs, .false.); check_err()
+    if(get_err().ne.0) then
+       throw_err("error on converting -z", 1)
+    end if
     allocate(zs(nz))
     call str2vec(line, nz, zs, .true.); check_err()
 
@@ -165,6 +174,8 @@ contains
        n_dr = (/0,1,0/)
     case("001")
        n_dr = (/0,0,1/)
+    case default
+       throw_err("unsupported str_type", 1)
     end select        
 
     call open_r(ifile_in, fn_in); check_err()
@@ -198,12 +209,11 @@ contains
   subroutine AOMat_run
     use Mod_fjson
     use Mod_ArgParser
+    use Mod_math, only : dump_dmat
     type(Obj_Nshel) :: nshel
-    character(100) :: fn_nshel, fn_in, out_dir, str_type
-    double precision :: rs(1,3)
-    integer :: ir, num_basis, mu
-    integer :: n_dr(3)
-    double precision, allocatable :: m(:,:)
+    character(100) :: fn_nshel, out_dir, str_type
+    integer :: num_basis
+    double precision, allocatable :: m(:,:), m3(:,:,:)
     integer :: ifile = 192
     
     call arg_parse_s("-t", str_type); check_err()
@@ -215,55 +225,105 @@ contains
     call Nshel_setup(nshel, .true.); check_err()
     call Nshel_num_basis(nshel, num_basis); check_err()
 
-    allocate(m(num_basis, num_basis))
+    allocate(m(num_basis, num_basis), m3(3, num_basis, num_basis))
 
     select case(str_type)
+    case("dw2")
+       call Nshel_dw2(nshel, m3); check_err()
+
+       call open_w(ifile, trim(out_dir)//"/ao_dx2.csv"); check_err()       
+       call dump_dmat(m3(1,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
+       call open_w(ifile, trim(out_dir)//"/ao_dy2.csv"); check_err()       
+       call dump_dmat(m3(2,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
+       call open_w(ifile, trim(out_dir)//"/ao_dz2.csv"); check_err()       
+       call dump_dmat(m3(3,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+       
+    case("dw")
+       call Nshel_dw(nshel, m3); check_err()
+
+       call open_w(ifile, trim(out_dir)//"/ao_dx.csv"); check_err()       
+       call dump_dmat(m3(1,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
+       call open_w(ifile, trim(out_dir)//"/ao_dy.csv"); check_err()       
+       call dump_dmat(m3(2,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
+       call open_w(ifile, trim(out_dir)//"/ao_dz.csv"); check_err()       
+       call dump_dmat(m3(3,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+       
+    case("s")
+       call Nshel_s(nshel, m); check_err()
+
+       call open_w(ifile, trim(out_dir)//"/ao_s.csv"); check_err()       
+       call dump_dmat(m(:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
     case("stvrd")
        call Nshel_s(nshel, m); check_err()
-       call open_w(ifile, out_dir//"/ao_s.csv"); check_err()
-       ifile = ifile + 1
+       call open_w(ifile, trim(out_dir)//"/ao_s.csv"); check_err()       
        call dump_dmat(m, ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
 
        call Nshel_t(nshel, m); check_err()
-       call open_w(ifile, out_dir//"/ao_t.csv"); check_err()
-       ifile = ifile + 1
+       call open_w(ifile, trim(out_dir)//"/ao_t.csv"); check_err()       
        call dump_dmat(m, ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
 
        call Nshel_v(nshel, m); check_err()
-       call open_w(ifile, out_dir//"/ao_v.csv"); check_err()
-       ifile = ifile + 1
+       call open_w(ifile, trim(out_dir)//"/ao_v.csv"); check_err()       
        call dump_dmat(m, ifile); check_err()
-
-       call Nshel_r(nshel, 1, m); check_err()
-       call open_w(ifile, out_dir//"/ao_rx.csv"); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()
-
-       call Nshel_r(nshel, 2, m); check_err()
-       call open_w(ifile, out_dir//"/ao_ry.csv"); check_err()
+       
+       call Nshel_r(nshel, m3); check_err()
+       call open_w(ifile, trim(out_dir)//"/ao_rx.csv"); check_err()       
+       call dump_dmat(m3(1,:,:), ifile); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()
-
-       call Nshel_r(nshel, 3, m); check_err()
-       call open_w(ifile, out_dir//"/ao_rz.csv"); check_err()
+       
+       call open_w(ifile, trim(out_dir)//"/ao_ry.csv"); check_err()
+       call dump_dmat(m3(2,:,:), ifile); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()                     
-
-       call Nshel_dw(nshel, 1, m); check_err()
-       call open_w(ifile, out_dir//"/ao_dx.csv"); check_err()
+       
+       call open_w(ifile, trim(out_dir)//"/ao_rz.csv"); check_err()       
+       call dump_dmat(m3(3,:,:), ifile); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()
-
-       call Nshel_dw(nshel, 2, m); check_err()
-       call open_w(ifile, out_dir//"/ao_dy.csv"); check_err()
+       
+       call Nshel_dw(nshel, m3); check_err()
+       call open_w(ifile, trim(out_dir)//"/ao_dx.csv"); check_err()
+       call dump_dmat(m3(1,:,:), ifile); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()
-
-       call Nshel_dw(nshel, 3, m); check_err()
-       call open_w(ifile, out_dir//"/ao_dz.csv"); check_err()
+       
+       call open_w(ifile, trim(out_dir)//"/ao_dy.csv"); check_err()
+       call dump_dmat(m3(2,:,:), ifile); check_err()
+       close(ifile)
        ifile = ifile + 1
-       call dump_dmat(m, ifile); check_err()       
-
+       
+       call open_w(ifile, trim(out_dir)//"/ao_dz.csv"); check_err()
+       call dump_dmat(m3(3,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+    case default
+       throw_err("unsupported", 1)
     end select
         
   end subroutine AOMat_run

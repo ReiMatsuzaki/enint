@@ -68,10 +68,53 @@ contains
     end do
     
   end subroutine DetString_dump
-  function DetString_index(this) result(res)
+  function DetString_index(this, ds) result(res)
     type(Obj_DetString) :: this
+    integer, intent(in) :: ds(:)
     integer res
+    integer :: k, m
+
+    res = 0
+    m = 0
+    do k = 1, this%norbs
+       if()
+       if(ds(k).eq.1) then
+          m = m + 1
+       end if
+       
+       res = res + this%y(k,m)
+    end do
+    
   end function DetString_index
+  subroutine next_path(this, ds)
+    type(Obj_DetString) :: this
+    integer, intent(in) :: ds(:)
+    integer k, m, k0, m0
+
+    m = this%N
+    do k = this%norbs, 1, -1
+       if(ds(k).eq.1) then
+          if(this%o(k-1,m)) then
+             k0 = k
+             m0 = m
+             exit
+          else
+             m = m-1
+          end if
+       end if
+    end do
+
+    m = m0
+    do k = k0, this%norbs
+       if(this%o(k-1,m)) then
+          ds(k) = 0
+       else
+          ds(k) = 1
+          m = m+1
+       end if
+    end do
+    
+  end subroutine next_path
   function correct_node(N,norbs,m,k) result(res)
     integer, intent(in) :: N,norbs,m,k
     logical :: res

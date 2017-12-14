@@ -10,25 +10,29 @@ module Mod_TestNshel
 contains
   subroutine TestNshel_run()
       
-    call Utest_sub_begin("smat")
-    call test_smat()
+!    call Utest_sub_begin("smat")
+!    call test_smat()
+!    call Utest_sub_end()
+!
+!    call Utest_sub_begin("ao_at")
+!    call test_ao_at()
+!    call Utest_sub_end()
+!
+!    call Utest_sub_begin("ao_at_d")
+!    call test_ao_at_d()
+!    call Utest_sub_end()
+
+    call Utest_sub_begin("ao_dw")
+    call test_dw()
     call Utest_sub_end()
 
-    call Utest_sub_begin("ao_at")
-    call test_ao_at()
-    call Utest_sub_end()
-
-    call Utest_sub_begin("ao_at_d")
-    call test_ao_at_d()
-    call Utest_sub_end()        
-
-    call Utest_sub_begin("h2")
-    call test_h2()
-    call Utest_sub_end()
-
-    call Utest_sub_begin("hcp")
-    call test_hcp()
-    call Utest_sub_end()
+ !   call Utest_sub_begin("h2")
+ !   call test_h2()
+ !   call Utest_sub_end()
+!
+!    call Utest_sub_begin("hcp")
+!    call test_hcp()
+!    call Utest_sub_end()
     
   end subroutine TestNshel_run
   subroutine test_smat()
@@ -108,7 +112,8 @@ contains
     dx = 0.001d0
 
     call Nshel_new(nshel, 1, 3); check_err()
-    nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
+    !    nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
+    nshel%nucs%ws(1,:) = (/0.1d0,0.2d0,0.3d0/);
     coef_l = 0
     coef_l(0,1) = 1.0d0
     coef_l(1,1) = 1.0d0
@@ -151,6 +156,47 @@ contains
     end do
         
   end subroutine test_ao_at_d
+  subroutine test_dw()
+    type(Obj_Nshel) nshel
+    integer :: ns(1,3)
+    double precision :: coef_l(0:3,20)
+    integer :: num
+    double precision, allocatable :: M(:,:,:)
+    integer :: i, j
+    
+    call Nshel_new(nshel, 2, 3); check_err()
+    nshel%nucs%ws(1,:) = (/0.0d0,0.0d0,0.0d0/);
+    nshel%nucs%ws(2,:) = (/0.2d0,0.1d0,0.3d0/);
+    nshel%nucs%zs(:) = (/1.0d0, 2.0d0/)
+    ns = 0
+    coef_l = 0
+    coef_l(0,1:2) = (/1.0d0, 0.5d0/)
+    coef_l(1,1) = 1.0d0
+    coef_l(2,1:3) = 1.0d0
+    call Nshel_set(nshel, 1, (/"s"/), 2, (/1.1d0,1.0d0/), coef_l, 1)
+    check_err()
+    call Nshel_set(nshel, 2, (/"p"/), 1, (/1.3d0/), coef_l, 2); check_err()
+    call Nshel_set(nshel, 3, (/"d"/), 1, (/1.3d0/), coef_l, 2); check_err()
+    !call Nshel_set(nshel, 3, (/"p"/), 1, (/1.4d0/), coef_l, 2); check_err()
+    
+    !call Nshel_new_file(nshel, "../gms/hcp/out/nshel.json"); check_err()
+    call Nshel_setup(nshel); check_err()
+    !call Nshel_dump(nshel)
+    
+    call Nshel_num_basis(nshel, num)    
+    allocate(M(3,num,num))
+    call Nshel_dw(nshel, M)
+    do i = 1, num
+       do j = 1, num
+          if(abs(M(1,i,j)+M(1,j,i)) > 1.0d-5) then
+             write(*,*) i,j,M(1,i,j)
+          end if
+       end do
+    end do
+    write(*,*) 
+    call expect_near(0.0d0, sum(M(1,:,:)+transpose(M(1,:,:))), 1.0d-8); check_err()
+    
+  end subroutine test_dw
   subroutine test_h2()
     use Mod_math
     integer :: ifile = 12323

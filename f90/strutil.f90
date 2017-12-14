@@ -140,14 +140,21 @@ contains
        if(n .ne. 4) then
           throw_err("invalid argument", 1)
        end if       
-       call convert_i(lines(4), nx); check_err()
+       call convert_i(lines(4), nx)
+       if(get_err().ne.0) then
+          begin_err(1)
+          write(0,*) "invalid argument"
+          write(0,*) "str:", str
+          write(0,*) "line[4]:", lines(4)
+          end_err()
+       end if
        if(calc_xs) then
           call convert_d(lines(2), x0); check_err()
           call convert_d(lines(3), x1); check_err()
           do i = 1, nx
              xs(i) = x0 + (i-1)*(x1-x0)/(nx-1)
           end do
-       end if
+       end if       
     case("scalar")       
        nx = 1
        if(calc_xs) then

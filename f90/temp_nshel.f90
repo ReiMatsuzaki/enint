@@ -375,15 +375,31 @@ contains
     integer :: j0, i, j, js, jj
     FIELD, allocatable :: smat(:,:)
     logical normalize
+    double precision, parameter :: tol = 1.0d-10
 
+    ! -- index --
     j0 = 0
     do i = 1, this%num
        this%j0s(i) = j0
        j0 = j0 + this%shels(i)%num
     end do
-
     this%nbasis = j0
 
+    ! -- check current coefficient --
+    do js = 1, this%num
+       do jj = 1, this%shels(js)%num
+          if(sum(abs(this%shels(js)%coef(jj,:)))<tol) then
+             begin_err(1)
+             write(0,*) "coefficient is too small"
+             write(0,*) "jshel:", js
+             write(*,*) "jj:", jj
+             write(*,*) "sum(coef):", sum(abs( this%shels(js)%coef(jj,:)))
+             end_err()
+          end if
+       end do
+    end do
+
+    ! -- normalization or not --
     if(present(in_normalize)) then
        normalize = in_normalize
     else
@@ -402,8 +418,6 @@ contains
           end do
        end do
     end if
-
-    
     
   end subroutine Nshel_setup
   subroutine Nshel_s(this, mat)
@@ -457,6 +471,19 @@ contains
     
   end subroutine Nshel_s
   subroutine Nshel_t(this, mat)
+    type(Obj_Nshel) :: this
+    FIELD :: mat(:,:)
+    FIELD, allocatable :: mat_dw2(:,:,:)
+    integer num
+
+    call Nshel_num_basis(this, num)
+    allocate(mat_dw2(3, num, num))
+    call Nshel_dw2(this, mat_dw2)
+
+    mat(:,:) = -0.5d0 * (mat_dw2(1,:,:) + mat_dw2(2,:,:) + mat_dw2(3,:,:))
+    
+  end subroutine Nshel_t
+  subroutine Nshel_t_old(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
     FIELD :: mat(:,:)
@@ -531,7 +558,7 @@ contains
     end do
     mat(:,:) = -mat(:,:)/2
     deallocate(d)
-  end subroutine Nshel_t
+  end subroutine Nshel_t_old
   subroutine Nshel_v(this, mat)
     use Mod_const, only : pi
     type(Obj_Nshel) :: this
@@ -665,10 +692,9 @@ contains
     FIELD :: mat(:,:,:)
     integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), j, k, ir, jr
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
-    FIELD :: d(3,0:5,0:5,0:10), acc, acc0, acc1, coef
+    FIELD :: d(3,0:5,0:5,0:10), acc0, acc1, coef
     integer :: one(3,3)
 
-    call check_setup(this); check_err()
     
     one = 0
     do ir = 1, 3
@@ -699,25 +725,24 @@ contains
                 do kk = 1, this%shels(ks)%num                      
                    nj(:) = this%shels(js)%ns(jj,:)
                    nk(:) = this%shels(ks)%ns(kk,:)
-                   acc0 = -2*zk
+                   acc0 = 2*zk
                    do jr = 1, 3
-                      acc = acc * d(ir,nj(jr),nk(jr)+one(ir,jr),0)
+                      acc0 = acc0 * d(jr,nj(jr),nk(jr)+one(ir,jr),0)
                    end do
                    if(nk(ir)>0) then
-                      acc1 = nk(ir)
+                      acc1 = -nk(ir)
                       do jr = 1, 3
                          acc1 = acc1 * d(jr,nj(jr),nk(jr)-one(ir,jr),0)
                       end do
                    else
                       acc1 = 0
                    end if
-                   acc = acc0 + acc1
                    
                    coef = cp* this%shels(js)%coef(jj,jg) * this%shels(ks)%coef(kk,kg)
                    j = this%j0s(js) + jj
                    k = this%j0s(ks) + kk
                    
-                   mat(ir,j,k) = mat(ir,j,k) + coef*acc
+                   mat(ir,j,k) = mat(ir,j,k) + coef*(acc0 + acc1)
                 end do                   
                 end do
                 end do
@@ -726,6 +751,92 @@ contains
        end do
     end do        
   end subroutine Nshel_dw
+  subroutine Nshel_dw2(this, mat)
+    use Mod_const, only : pi
+    type(Obj_Nshel) :: this
+    FIELD :: mat(:,:,:)
+    integer num
+    integer js, ks, jg, kg, maxnj, maxnk, jj, kk, nj(3), nk(3), ir, jr, j, k, nkp(3)  
+    FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
+    FIELD :: acc, coef, cum    
+    FIELD, allocatable :: d(:,:,:,:)
+
+    call check_setup(this); check_err()
+
+    call Nshel_num_basis(this, num)
+    if(size(mat,1)<3 .or. size(mat,2)<num .or. size(mat,3)<num) then
+       begin_err(1)
+       write(0,*) "size mismatch"
+       write(0,*) "basis size:", num
+       write(0,*) "mat.shape:", shape(mat)
+       end_err()
+    end if
+
+    allocate(d(1:3, 0:10, 0:10, 0:0))
+    
+    mat(:,:,:) = 0
+    do js = 1, this%num
+       do ks = 1, this%num
+          wj(:) = this%shels(js)%w(:)
+          wk(:) = this%shels(ks)%w(:)
+          d2 = dot_product(wj-wk,wj-wk)
+          maxnj = this%shels(js)%maxn
+          maxnk = this%shels(ks)%maxn
+
+          do jg = 1, this%shels(js)%ng
+             do kg = 1, this%shels(ks)%ng
+                zj = this%shels(js)%zeta(jg)
+                zk = this%shels(ks)%zeta(kg)
+                zp = zj+zk
+                wp(:) = (zj*wj(:) + zk*wk(:))/zp
+                ep = exp(-zj*zk/zp*d2)
+                cp = ep*(pi/zp)**(1.5)
+                call coef_d(zp,wp,wj,wk,maxnj,maxnk+2,0, d); check_err()
+
+                do jj = 1, this%shels(js)%num
+                   do kk = 1, this%shels(ks)%num
+                      coef = cp * this%shels(js)%coef(jj,jg) &
+                           * this%shels(ks)%coef(kk,kg)
+                      j = this%j0s(js) + jj
+                      k = this%j0s(ks) + kk
+                      nj(:) = this%shels(js)%ns(jj,:)
+                      nk(:) = this%shels(ks)%ns(kk,:)
+
+                      do jr = 1, 3
+                         cum = 0
+                         
+                         acc = 1
+                         do ir = 1, 3
+                            acc = acc * d(ir,nj(ir),nk(ir),0)
+                         end do
+                         cum = cum - 2*zk*(2*nk(jr)+1)*acc
+
+                         nkp(:) = nk(:); nkp(jr) = nkp(jr)+2
+                         acc = 1
+                         do ir = 1, 3
+                            acc = acc * d(ir,nj(ir),nkp(ir),0)
+                         end do
+                         cum = cum + 4*zk*zk*acc
+
+                         if(nk(jr)>1) then
+                            nkp(:) = nk(:); nkp(jr) = nkp(jr)-2
+                            acc = 1
+                            do ir = 1, 3
+                               acc = acc * d(ir,nj(ir),nkp(ir),0)
+                            end do
+                            cum = cum + nk(jr)*(nk(jr)-1)*acc
+                         end if
+                         
+                         mat(jr,j,k) = mat(jr,j,k) + coef*cum
+                      end do
+                   end do
+                end do
+             end do
+          end do
+       end do
+    end do
+    deallocate(d)
+  end subroutine Nshel_dw2
   subroutine Nshel_eri(this, eri)
     use Mod_Molfunc, only : coef_d
     use Mod_const, only : pi
