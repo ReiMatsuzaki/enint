@@ -60,10 +60,10 @@ def igamma_f1(maxm, z):
             
     if(not convq):
         print 
-        print c, delta, anR[nf_max-1]
-        print c*delta > abs(anR[nf_max-1])
-        print s, delta, anI[nf_max-1]
-        print s*delta>abs(anI[nf_max-1])
+        print(c, delta, anR[nf_max-1])
+        print(c*delta > abs(anR[nf_max-1]))
+        print(s, delta, anI[nf_max-1])
+        print(s*delta>abs(anI[nf_max-1]))
         raise RuntimeError("""not converged.
 z = {0}
 c = {1}

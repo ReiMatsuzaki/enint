@@ -168,7 +168,7 @@ if __name__ == '__main__':
                   [3.2, 1.3]])
     df = mat2ijv(x)
     y = ijv2mat(df)
-    print sum(abs(y-x))
+    print(sum(abs(y-x)))
 
 
 
@@ -202,8 +202,8 @@ def uni_inte(h_or_hc, dt, c, opts={}):
 
     if(opts["print_lvl"]>0):
         print 
-        print "math.uni_inte begin"
-        print "inte:", opts["inte"]
+        print("math.uni_inte begin")
+        print("inte:", opts["inte"])
         
     if(inte == "diag"):
         

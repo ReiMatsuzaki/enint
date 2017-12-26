@@ -115,9 +115,9 @@ class Shel:
             nx = ns[:,:]*n_dr[l,:]
             ns_m = ns[:,:] - n_dr[l,:]
             ns_p = ns[:,:] + n_dr[l,:]
-            print "nx:", nx
-            print "rj:", rj
-            print "ns_m:", ns_m
+            print("nx:", nx)
+            print("rj:", rj)
+            print("ns_m:", ns_m)
             rn_ij_m = np.multiply.reduce(nx[:,l,:]*rj[l,:,:]**ns_m[:,l,:], axis=2)
             rn_ij_p = np.multiply.reduce(rj[l,:,:]**ns_p[:,l,:], axis=2)
             cexp_ij = np.dot(self.coef, exp(-1.0*self.ex[:,l]*r2j[l,:]))
