@@ -694,7 +694,6 @@ contains
     FIELD :: wj(3), wk(3), d2, zj, zk, zp, wp(3), ep, cp
     FIELD :: d(3,0:5,0:5,0:10), acc0, acc1, coef
     integer :: one(3,3)
-
     
     one = 0
     do ir = 1, 3

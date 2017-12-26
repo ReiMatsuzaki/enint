@@ -93,6 +93,6 @@ check_aogrid: ${BUILD}/${TARGET} check_grid
 	${BUILD}/${TARGET} ao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/hcp/out/nshel.json -t 000
 check_dw: ${BUILD}/${TARGET}
 	${BUILD}/${TARGET} ao_mat -out_dir utest -nshel ../gms/hcp/out/nshel.json -t dw
-	cat utest/ao_dz.csv
+
 
 
