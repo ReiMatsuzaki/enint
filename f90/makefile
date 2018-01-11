@@ -5,9 +5,9 @@ FF:=${FF}
 MODS0=err_handle timer const math strutil istream fjson
 
 # -- Directories --
-SRC=${NAEWDY_PATH}/src
-BUILD=${NAEWDY_PATH}/build
-TESTS=${NAEWDY_PATH}/tests
+SRC=${PROJ_ROOT}/src
+BUILD=${PROJ_ROOT}/build
+TESTS=${PROJ_ROOT}/tests
 
 # -- compile --
 rnshel.o: temp_nshel.f90
@@ -58,8 +58,8 @@ check_nshel: ${BUILD}/utest_nshel
 TARGET=utest_molfunc
 MODULES=${MODS0} utest rmolfunc ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
-${BUILD}/utest_molfunc: ${OBJS}
-	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
+utest_molfunc: ${OBJS}
+	${FC} ${FF} $^ -o ${BUILD}/utest_molfunc -llapack -lblas -lfgsl -cpp 
 check_molfunc: ${BUILD}/utest_molfunc
 	${BUILD}/utest_molfunc
 
