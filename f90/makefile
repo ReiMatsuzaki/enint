@@ -83,15 +83,15 @@ check_det: ${BUILD}/utest_det
 TARGET=enint
 MODULES=${MODS0} strutil argparser rmolfunc rnshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
-${BUILD}/${TARGET}: ${OBJS}
-	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
-check_nars: ${BUILD}/${TARGET}
+enint:
+	${FC} ${FF} $^ -o ${BUILD}/${TARGET} -llapack -lblas -lfgsl
+check_nars: enint
 	${BUILD}/${TARGET} na_rs ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
-check_grid: ${BUILD}/${TARGET}
+check_grid: enint
 	${BUILD}/${TARGET} grid -x linspace,0.0,5.0,6 -y scalar,0.0 -z scalar,0.0 -o utest/xyz.csv
-check_aogrid: ${BUILD}/${TARGET} check_grid
+check_aogrid: enint${BUILD}/${TARGET} check_grid
 	${BUILD}/${TARGET} ao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/hcp/out/nshel.json -t 000
-check_dw: ${BUILD}/${TARGET}
+check_dw: enint
 	${BUILD}/${TARGET} ao_mat -out_dir utest -nshel ../gms/hcp/out/nshel.json -t dw
 
 
