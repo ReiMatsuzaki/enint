@@ -5,9 +5,9 @@ FF:=${FF}
 MODS0=err_handle timer const math strutil istream fjson
 
 # -- Directories --
-SRC=${NAEWDY_PATH}/src
-BUILD=${NAEWDY_PATH}/build
-TESTS=${NAEWDY_PATH}/tests
+SRC=${PROJ_ROOT}/src
+BUILD=${PROJ_ROOT}/build
+TESTS=${PROJ_ROOT}/tests
 
 # -- compile --
 rnshel.o: temp_nshel.f90
@@ -58,8 +58,8 @@ check_nshel: ${BUILD}/utest_nshel
 TARGET=utest_molfunc
 MODULES=${MODS0} utest rmolfunc ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
-${BUILD}/utest_molfunc: ${OBJS}
-	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl -cpp 
+utest_molfunc: ${OBJS}
+	${FC} ${FF} $^ -o ${BUILD}/utest_molfunc -llapack -lblas -lfgsl -cpp 
 check_molfunc: ${BUILD}/utest_molfunc
 	${BUILD}/utest_molfunc
 
@@ -83,13 +83,13 @@ check_det: ${BUILD}/utest_det
 TARGET=enint
 MODULES=${MODS0} strutil argparser rmolfunc rnshel ${TARGET}
 OBJS=$(addsuffix .o, ${MODULES})
-${BUILD}/${TARGET}: ${OBJS}
-	${FC} ${FF} $^ -o $@ -llapack -lblas -lfgsl
-check_nars: ${BUILD}/${TARGET}
+enint:
+	${FC} ${FF} $^ -o ${BUILD}/${TARGET} -llapack -lblas -lfgsl
+check_nars: enint
 	${BUILD}/${TARGET} na_rs ../gms/hcp/out/nshel.json utest/rs.csv utest/mat.csv
-check_grid: ${BUILD}/${TARGET}
+check_grid: enint
 	${BUILD}/${TARGET} grid -x linspace,0.0,5.0,6 -y scalar,0.0 -z scalar,0.0 -o utest/xyz.csv
-check_aogrid: ${BUILD}/${TARGET} check_grid
+check_aogrid: enint${BUILD}/${TARGET} check_grid
 	${BUILD}/${TARGET} ao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/hcp/out/nshel.json -t 000
 check_aoaogrid: ${BUILD}/${TARGET} check_grid
 	${BUILD}/${TARGET} aoao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/lif_casscf66/naewdy2/out/nshel.json -t ii00
