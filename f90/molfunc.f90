@@ -281,7 +281,7 @@ contains
        end do
     end if
     
-  end function coef_R1  
+  end function coef_R1
   subroutine coef_R_fast(zp,wpc,maxn, cr)
     FIELD, intent(in) :: zp
     FIELD, intent(in) :: wpc(3)

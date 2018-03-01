@@ -20,11 +20,23 @@ contains
 !
 !    call Utest_sub_begin("ao_at_d")
 !    call test_ao_at_d()
+    !    call Utest_sub_end()
+
+!    call Utest_sub_begin("ao_at_2")
+!    call test_ao_at_2
 !    call Utest_sub_end()
 
-    call Utest_sub_begin("ao_dw")
-    call test_dw()
+!    call Utest_sub_begin("aoao_at_s")
+!    call test_aoao_at_s
+    !    call Utest_sub_end()
+
+    call Utest_sub_begin("aoao_at")
+    call test_aoao_at
     call Utest_sub_end()
+    
+!    call Utest_sub_begin("ao_dw")
+!    call test_dw()
+!    call Utest_sub_end()
 
  !   call Utest_sub_begin("h2")
  !   call test_h2()
@@ -64,7 +76,7 @@ contains
     type(Obj_Nshel) nshel
     double precision :: coef_l(0:3,20)
     double precision :: rs(2,3)
-    double precision, allocatable :: ao_rs(:,:)
+    double precision, allocatable :: ao_rs(:,:), ao_rs2(:,:)
     integer :: num_basis
     double precision :: ref, d
 
@@ -88,6 +100,7 @@ contains
          0.0d0, -0.1d0/), (/2,3/))
     call Nshel_num_basis(nshel, num_basis); check_err()
     allocate(ao_rs(num_basis, size(rs,1)))
+    allocate(ao_rs2(num_basis, size(rs,1)))
     call Nshel_ao_at(nshel, rs, (/0,0,0/), ao_rs(:,:)); check_err()
 
     call expect_eq(nshel%shels(1)%coef(1,1), ao_rs(1,1)); check_err()
@@ -102,6 +115,62 @@ contains
     call expect_eq(ref, ao_rs(5,1))
     
   end subroutine test_ao_at
+  subroutine test_ao_at_2()
+    
+    type(Obj_Nshel) nshel
+    double precision :: coef_l(0:3,20)
+    double precision, parameter :: xmax = 5.0d0
+    integer, parameter :: n1 = 50
+    integer, parameter :: nr = n1**3
+    double precision :: rs(nr,3)
+    double precision, allocatable :: ao_rs(:,:)
+    integer :: num_basis, i, j, k, idx
+    double precision :: dx
+    
+    call Nshel_new(nshel, 2, 3); check_err()
+    nshel%nucs%ws(1,:) = (/0.1d0,0.2d0,-0.1d0/);
+    nshel%nucs%ws(2,:) = (/0.3d0,-0.1d0,0.2d0/);   ! location 
+    nshel%nucs%zs(:)   = (/1.0d0, 0.3d0/)         ! charge
+    coef_l = 0
+    coef_l(0,1) = 1.0d0
+    coef_l(1,1) = 1.0d0
+    coef_l(2,1) = 1.0d0
+    call Nshel_set(nshel, 1, (/"s"/),   1, (/1.0d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 2, (/"p"/),   1, (/1.3d0/), coef_l, 2); check_err()
+    call Nshel_set(nshel, 3, (/"d"/), 1, (/1.2d0/), coef_l, 2); check_err()
+    call Nshel_setup(nshel, .true.); check_err()
+
+
+    dx = 2*xmax/n1
+    idx = 0
+    do i = 1, n1
+       do j = 1, n1
+          do k = 1, n1
+             idx = idx + 1
+             rs(idx, 1) = (i - n1/2)*dx
+             rs(idx, 2) = (j - n1/2)*dx
+             rs(idx, 3) = (k - n1/2)*dx
+          end do
+       end do
+    end do
+    
+    call Nshel_num_basis(nshel, num_basis); check_err()
+    allocate(ao_rs(num_basis, nr))
+    call Nshel_ao_at(nshel, rs, (/0,0,0/), ao_rs(:,:)); check_err()
+
+    call expect_near(1.0d0, sum(ao_rs(1, :)**2 * dx**3), 1.0d10)
+    
+    call expect_near(1.0d0, sum(ao_rs(2, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(3, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(4, :)**2) * dx**3, 1.0d-10)
+    
+    call expect_near(1.0d0, sum(ao_rs(5, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(6, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(7, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(8, :)**2) * dx**3, 1.0d-10)
+    call expect_near(1.0d0, sum(ao_rs(9, :)**2) * dx**3, 1.0d-10)
+    
+  end subroutine test_ao_at_2
   subroutine test_ao_at_d()
     type(Obj_Nshel) nshel
     double precision :: coef_l(0:3,20)
@@ -156,6 +225,112 @@ contains
     end do
         
   end subroutine test_ao_at_d
+  subroutine test_aoao_at_s()
+    use Mod_const, only : pi
+    type(Obj_Nshel)  :: nshel
+    double precision :: coef_l(0:3,20)
+    integer, parameter :: natom=2, num_sh=2
+    integer :: nao
+    double precision :: zs(1), zeta1, zeta2
+    double precision, allocatable :: aoao(:,:,:)
+    double precision :: ref, d1, d2
+
+    call Nshel_new(nshel, natom, num_sh)
+    nshel%nucs%ws(1,:) = (/0.0d0, 0.0d0, 0.1d0/)
+    nshel%nucs%ws(2,:) = (/0.0d0, 0.0d0, 0.2d0/)
+    coef_l = 0
+    coef_l(0,1) = 1
+    coef_l(1,1) = 1
+    coef_l(2,1) = 1
+    call Nshel_set(nshel, 1, (/"s"/), 1, (/1.1d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 2, (/"d"/), 1, (/1.1d0/), coef_l, 1); check_err()    
+    call Nshel_setup(nshel, .true.); check_err()
+    !call Nshel_dump(nshel)
+    !   j  jj   n      
+    !   2   1  2  0  0     1.94467
+    !   3   2  0  2  0     1.94467
+    !   4   3  0  0  2     1.94467
+    !   5   4  1  1  0     3.36827
+    !   6   5  1  0  1     3.36827
+    !   7   6  0  1  1     3.36827
+
+    call Nshel_num_basis(nshel, nao)
+    allocate(aoao(nao, nao, 1))
+    
+    zs(1) = 0.3d0
+    call Nshel_aoao_at_intxy(nshel, zs, 0, 0, aoao); check_err()
+
+    zeta1 = nshel%shels(1)%zeta(1)
+    zeta2 = nshel%shels(2)%zeta(1)
+    d1    = nshel%shels(1)%w(3)
+    d2    = nshel%shels(2)%w(3)
+    
+    call expect_near(0.0d0, aoao(1,5,1), 1.0d-8); check_err()
+    call expect_near(0.0d0, aoao(1,6,1), 1.0d-8); check_err()
+    call expect_near(0.0d0, aoao(1,7,1), 1.0d-8); check_err()
+
+    ref = sqrt(2.0d0*zeta1/pi) * exp(-2*zeta1*(zs(1)-d1)**2)
+    call expect_near(ref, aoao(1,1,1), 1.0d-8); check_err()
+    
+    ref = sqrt(2.0d0*zeta2/pi) * exp(-2*zeta2*(zs(1)-d2)**2)
+    call expect_near(ref, aoao(2,2,1), 1.0d-8); check_err()
+    call expect_near(ref, aoao(3,3,1), 1.0d-8); check_err()    
+    
+  end subroutine test_aoao_at_s
+  subroutine test_aoao_at()
+    type(Obj_Nshel)  :: nshel
+    double precision :: coef_l(0:3,20)
+    integer, parameter :: natom=2, num_sh=3
+    double precision, parameter :: maxx=4.5d0
+    integer, parameter :: nx=1500, ny=nx, nz=1
+    double precision, parameter :: dr=maxx/nx
+    integer :: ix,iy, iz, nao, idx
+    double precision :: zs(nz), rs(nx*ny*nz,3)
+    
+    double precision, allocatable :: ao(:,:), aoao(:,:,:)
+    double precision :: ref
+
+    call Nshel_new(nshel, natom, num_sh)
+    nshel%nucs%ws(1,:) = (/0.0d0, 0.0d0, 0.0d0/)
+    nshel%nucs%ws(2,:) = (/0.0d0, 0.0d0, 1.2d0/)
+    nshel%nucs%zs(:)   = (/1.0d0, 3.0d0/)
+    coef_l = 0
+    coef_l(0,1) = 1
+    coef_l(1,1) = 1
+    coef_l(2,1) = 1
+    call Nshel_set(nshel, 1, (/"s"/), 1, (/1.1d0/), coef_l, 1); check_err()
+    call Nshel_set(nshel, 2, (/"p"/), 1, (/1.3d0/), coef_l, 2); check_err()
+    call Nshel_set(nshel, 3, (/"d"/), 1, (/1.2d0/), coef_l, 2); check_err()
+    call Nshel_setup(nshel, .true.); check_err()
+    
+    do iz = 1, nz
+       zs(iz) = 0.3d0
+       do ix = 1, nx
+          do iy = 1, ny
+             idx = (iz-1)*nx*ny + (iy-1)*nx + ix
+             rs(idx,1) = dr*(ix-1)
+             rs(idx,2) = dr*(iy-1)
+             rs(idx,3) = zs(iz)
+          end do
+       end do
+    end do
+
+    call Nshel_num_basis(nshel, nao)
+    allocate(ao(nao, nx*ny*nz))
+    call Nshel_ao_at(nshel, rs, (/0,0,0/), ao); check_err()
+    allocate(aoao(nao, nao, nz))
+    call Nshel_aoao_at_intxy(nshel, zs, 0, 0, aoao); check_err()
+
+    ref = sum(ao(1,:)*ao(1,:))*dr*dr*4
+    call expect_near(ref, aoao(1,1,1), 0.004d0); check_err()
+
+    ref = sum(ao(5,:)*ao(5,:))*dr*dr*4
+    call expect_near(ref, aoao(5,5,1), 0.001d0); check_err()
+
+    ref = sum(ao(1,:)*ao(5,:))*dr*dr*4
+    call expect_near(ref, aoao(1,5,1), 0.001d0); check_err()
+    
+  end subroutine test_aoao_at
   subroutine test_dw()
     type(Obj_Nshel) nshel
     integer :: ns(1,3)

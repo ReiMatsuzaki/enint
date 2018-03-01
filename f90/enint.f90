@@ -31,6 +31,8 @@ contains
        call Grid_run; check_err()
     case("ao_grid")
        call AOGrid_run; check_err()
+    case("aoao_grid")
+       call AOAOGrid_run; check_err()       
     case("ao_mat")
        call AOMat_run; check_err()
     case default
@@ -100,7 +102,7 @@ contains
     call ErrHandle_delete()
     
   end subroutine na_rs_run
-  ! -- produce Grid --
+  ! -- Grid --
   subroutine Grid_run
     use Mod_ArgParser
     use Mod_StrUtil
@@ -147,7 +149,6 @@ contains
     close(ifile)
     
   end subroutine Grid_run
-  ! -- AO grid representation --
   subroutine AOGrid_run
     use Mod_fjson
     use Mod_ArgParser
@@ -159,6 +160,8 @@ contains
     double precision, allocatable :: ao(:,:)
     integer, parameter :: ifile_in = 192
     integer, parameter :: ifile_out = 193
+
+    write(*,*) "AOGrid_run"
     
     call arg_parse_s("-t", str_type); check_err()
     call arg_parse_s("-i", fn_in); check_err()
@@ -176,7 +179,9 @@ contains
        n_dr = (/0,0,1/)
     case default
        throw_err("unsupported str_type", 1)
-    end select        
+    end select
+
+    write(*,*) "n_dr:", n_dr
 
     call open_r(ifile_in, fn_in); check_err()
     call open_w(ifile_out, fn_out); check_err()
@@ -205,6 +210,78 @@ contains
     close(ifile_out)        
     
   end subroutine AOGrid_run
+  subroutine AOAOGrid_run
+    use Mod_fjson
+    use Mod_ArgParser
+    type(Obj_Nshel) :: nshel
+    character(100) :: fn_nshel, fn_in, fn_out, str_type
+    double precision :: x, y
+    double precision, allocatable :: zs(:)
+    integer :: ir, num_basis, mu, nu
+    integer :: nj_dz, nk_dz, nr
+    double precision, allocatable :: aoao(:,:,:)
+    integer, parameter :: ifile_in = 192
+    integer, parameter :: ifile_out = 193
+    
+    call arg_parse_s("-t", str_type); check_err()
+    call arg_parse_s("-i", fn_in); check_err()
+    call arg_parse_s("-o", fn_out); check_err()
+    call arg_parse_s("-nshel", fn_nshel); check_err()
+
+    select case(str_type)
+    case("ii00")
+       nj_dz = 0
+       nk_dz = 0
+    case("ii01")
+       nj_dz = 0
+       nk_dz = 1
+    case default
+       throw_err("unsupported str_type", 1)
+    end select
+    write(*,*) "x: integrate"
+    write(*,*) "y: integrate"
+    write(*,*) "z:", nj_dz, nk_dz
+
+    call open_r(ifile_in, fn_in); check_err()
+    call open_w(ifile_out, fn_out); check_err()
+    
+    write(*,*) "nshel json file:", trim(fn_nshel)
+    call Nshel_new_file(nshel, fn_nshel); check_err()
+    call Nshel_setup(nshel, .true.); check_err()
+    call Nshel_num_basis(nshel, num_basis); check_err()    
+
+    nr = 0
+    read(ifile_in, *)
+    do
+       read(ifile_in, *, end=101)
+       nr = nr +1
+    end do
+101 continue
+
+    allocate(zs(nr))
+    allocate(aoao(num_basis, num_basis, nr))
+    
+    rewind(ifile_in)
+    read(ifile_in, *)
+    do ir = 1, nr
+       read(ifile_in, *) x, y, zs(ir)
+    end do
+
+    call Nshel_aoao_at_intxy(nshel, zs(:), nj_dz, nk_dz, aoao(:,:,:)); check_err()
+
+    write(ifile_out,'("i,j,k,val")') 
+    do ir = 1, nr
+       do mu = 1, num_basis
+          do nu = 1, num_basis
+             write(ifile_out,'(i0,",",i0,",",i0,",",f20.10)') mu, nu,ir, aoao(mu,nu,1)
+          end do
+       end do
+    end do
+    
+    close(ifile_in)
+    close(ifile_out)        
+    
+  end subroutine AOAOGrid_run
   ! -- AO matrix --
   subroutine AOMat_run
     use Mod_fjson
@@ -260,6 +337,24 @@ contains
        ifile = ifile + 1
 
        call open_w(ifile, trim(out_dir)//"/ao_dz.csv"); check_err()       
+       call dump_dmat(m3(3,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+
+    case("r")
+       call Nshel_r(nshel, m3); check_err()
+       
+       call open_w(ifile, trim(out_dir)//"/ao_rx.csv"); check_err()       
+       call dump_dmat(m3(1,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+       
+       call open_w(ifile, trim(out_dir)//"/ao_ry.csv"); check_err()
+       call dump_dmat(m3(2,:,:), ifile); check_err()
+       close(ifile)
+       ifile = ifile + 1
+       
+       call open_w(ifile, trim(out_dir)//"/ao_rz.csv"); check_err()       
        call dump_dmat(m3(3,:,:), ifile); check_err()
        close(ifile)
        ifile = ifile + 1

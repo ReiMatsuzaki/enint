@@ -248,7 +248,31 @@ contains
           i = i + 1
        end if
     end do
-  end subroutine t2s  
+  end subroutine t2s
+  recursive function gtoint(n, z) result(res)
+    ! gives gauss type integration
+    !     Int_{-oo}^{+oo} x^n Exp[-zx^2] dx
+    integer :: n
+    double precision ::  z, res
+
+    res = 0.0d0
+    if(n < 0) then
+       throw_err("n must be 0 or positive", 1)
+    end if
+    
+    if(mod(n, 2) .eq. 1) then
+       res = 0.0d0
+       return
+    end if
+
+    if(n .eq. 0) then
+       res = sqrt(pi/z)
+       return
+    end if
+
+    res = (n-1)/(2*z) * gtoint(n-2, z)
+    
+  end function gtoint
 end module Mod_math
 
 module Mod_Sparse

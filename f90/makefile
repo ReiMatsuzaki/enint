@@ -91,8 +91,10 @@ check_grid: ${BUILD}/${TARGET}
 	${BUILD}/${TARGET} grid -x linspace,0.0,5.0,6 -y scalar,0.0 -z scalar,0.0 -o utest/xyz.csv
 check_aogrid: ${BUILD}/${TARGET} check_grid
 	${BUILD}/${TARGET} ao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/hcp/out/nshel.json -t 000
+check_aoaogrid: ${BUILD}/${TARGET} check_grid
+	${BUILD}/${TARGET} aoao_grid -i utest/xyz.csv -o utest/aogrid.csv -nshel ../gms/lif_casscf66/naewdy2/out/nshel.json -t ii00
 check_dw: ${BUILD}/${TARGET}
-	${BUILD}/${TARGET} ao_mat -out_dir utest -nshel ../gms/hcp/out/nshel.json -t dw
+	${BUILD}/${TARGET} ao_mat -out_dir utest -nshel ../gms/lif_casscf66/out/nshel.json -t dw
 
 
 

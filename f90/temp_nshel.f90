@@ -971,6 +971,102 @@ contains
     end do
     
   end subroutine Nshel_ao_at
+  subroutine Nshel_aoao_at_intxy(this, zs, nj_dz, nk_dz, res)
+    ! compute Integrate[AO_mu(r) AO_nu(r) dx dy]
+    !
+    ! require:
+    !   every AO must be located on z=0.
+    !
+    ! variable:
+    !   j,k : AO
+    !   i   : grid
+    
+    use Mod_math, only : gtoint
+    type(Obj_Nshel) :: this
+    FIELD, intent(in) :: zs(:)         ! (nz)
+    integer, intent(in) :: nj_dz, nk_dz
+    FIELD, intent(out) :: res(:,:,:)   ! (nao,nao,nz)
+    integer :: nz, nao
+    integer :: js, ks, jj, kk, jg, kg, j, k, nx, ny, nzj, nzk
+    FIELD :: zetaj, zetak, zeta, wj, wk, c, gg
+    FIELD, allocatable :: fz(:)
+    
+    nz = size(zs)
+    call Nshel_num_basis(this, nao)
+    allocate(fz(nz))
+    
+    if(size(res,1).ne.nao .or. size(res,2).ne.nao .or. &
+       size(res,3).ne.nz) then
+       begin_err(1)
+       write(0,*) "invalid size : res"
+       write(0,*) "res.shape:", size(res,1), size(res,2), size(res,3)
+       end_err()
+    end if
+    do js = 1, this%num
+       do jj = 1, this%shels(js)%num
+          if(abs(this%shels(js)%w(1)) > 1.0d-10 .or. &
+             abs(this%shels(js)%w(2)) > 1.0d-10) then
+             begin_err(1)
+             write(0,*) "all wx and wy must be zero."
+             write(0,*) "js:", js
+             write(0,*) "jj:", jj
+             write(0,*) "wx:", this%shels(js)%w(1)
+             write(0,*) "wy:", this%shels(js)%w(2)
+             end_err()
+          end if
+       end do
+    end do
+    call check_setup(this); check_err()
+
+    res(:,:,:) = 0
+    do js = 1, this%num
+    do ks = 1, this%num       
+    do jj = 1, this%shels(js)%num
+    do kk = 1, this%shels(ks)%num
+       do jg = 1, this%shels(js)%ng
+       do kg = 1, this%shels(ks)%ng
+          zetaj= this%shels(js)%zeta(jg)
+          zetak= this%shels(ks)%zeta(kg)
+          zeta = zetaj+zetak
+          nx   = this%shels(js)%ns(jj,1) + this%shels(ks)%ns(kk,1)
+          ny   = this%shels(js)%ns(jj,2) + this%shels(ks)%ns(kk,2)
+          nzj  = this%shels(js)%ns(jj,3)
+          nzk  = this%shels(ks)%ns(kk,3)
+          wj   = this%shels(js)%w(3)
+          wk   = this%shels(ks)%w(3)
+          c = this%shels(js)%coef(jj,jg)*this%shels(ks)%coef(kk,kg)
+          gg = gtoint(nx,zeta) * gtoint(ny,zeta)
+          j = this%j0s(js) + jj
+          k = this%j0s(ks) + kk
+          fz(:) = exp(-zetaj*(zs(:)-wj)**2 - zetak*(zs(:)-wk)**2)
+          if(nj_dz==0) then
+             fz(:) = fz(:) * (zs(:)-wj)**nzj
+          else if(nj_dz==1) then
+             fz(:) = fz(:) * (nzj*(zs(:)-wj)**(nzj-1)  &
+                  -2*zetaj*(zs(:)-wj)**(nzj+1))
+          else
+             throw_err("not impl", 1)
+          end if
+          
+          if(nk_dz==0) then
+             fz(:) = fz(:) * (zs(:)-wk)**nzk
+          else if(nk_dz==1) then
+             fz(:) = fz(:) * (nzk*(zs(:)-wk)**(nzk-1) &
+                  -2*zetak*(zs(:)-wk)**(nzk+1))
+          else
+             throw_err("not impl", 1)
+          end if
+          
+          res(j,k,:) = res(j,k,:) + c*gg * fz(:)
+       end do
+       end do
+       
+    end do
+    end do
+    end do
+    end do
+    
+  end subroutine Nshel_aoao_at_intxy
   ! == utils ==
   function is_in_s(ss, s) result(res)
     character(*), intent(in) :: ss(:)
